@@ -219,22 +219,12 @@ label {
 }
 
 /* ---- Transisi halaman dengan class bawaan Swup ---- */
-#app-frame {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 180ms ease, transform 180ms ease;
-}
 
 /* Saat transisi, cegah double click/scroll */
 html.is-changing #app-frame { pointer-events: none; }
 
 /* Keluar & masuk sama-sama dari state 0 → 1 */
 html.is-leaving   #app-frame,
-html.is-rendering #app-frame {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
 /* Progress bar di atas (mirip Livewire) */
 :root { --swup-progress-color: #0ea5e9; } /* sesuaikan warnanya */
 #swup-progress {

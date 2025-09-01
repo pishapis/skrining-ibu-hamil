@@ -101,7 +101,7 @@
         @endif
 
         @if (Auth::user()->role_id == 1)
-        <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600">
+        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('skrining.epds') ? 'bg-blue-100 text-blue-800' : ''])>
             <a href="{{ route('skrining.epds') }}">
                 <svg class="inline-block mr-2 w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
@@ -110,7 +110,7 @@
                 Skrining
             </a>
         </div>
-        <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600">
+        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600'])>
             <a href="#">
                 <svg class="inline-block mr-2 w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM6 10a4 4 0 118 0 4 4 0 01-8 0z" />
@@ -118,11 +118,24 @@
                 Edukasi
             </a>
         </div>
+        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600'])>
+            <a href="#">
+                <svg class="inline-block mr-2 w-5 h-5 mb-0.5" xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Riwayat">
+                    <path d="M3 12a9 9 0 1 0 3-6.7" />
+                    <path d="M3 4v4h4" />
+                    <circle cx="12" cy="12" r="5" />
+                    <path d="M12 9v3l2 1.2" />
+                </svg>
+                Riwayat
+            </a>
+        </div>
         @endif
 
         <!-- Menu Umum -->
-        <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600">
-            <a href="#">
+        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('profile.edit') ? 'bg-blue-100 text-blue-800' : ''])>
+            <a href="{{ route('profile.edit') }}">
                 <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd" />
                 </svg>

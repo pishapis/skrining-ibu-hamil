@@ -1,6 +1,5 @@
 <x-guest-layout title="Daftar | Skrining Ibu Hamil">
     @php
-    // Otomatis lompat ke step yang error (opsional, aman diabaikan kalau tak perlu)
     $errorStep = 0;
     if ($errors->any()) {
     $first = array_key_first($errors->toArray());

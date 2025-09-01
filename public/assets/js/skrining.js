@@ -276,53 +276,69 @@ function showEl(idElement) {
     element.classList.add("animate__zoomIn");
 }
 
-ALERT = function (message, type = "") {
-    if (!message) {
-        return;
-    }
-    if (typeof message !== "string") {
-        return;
-    }
+ALERT = function (message, type = "", opts = {}) {
+  if (message == null) return;
+  const text = String(message);
+  const duration = Number(opts.duration ?? 3000);
 
-    alertPlaceholder = document.getElementById("alertPlaceholder");
-    if (!alertPlaceholder) {
-        createDiv = document.createElement("div");
-        createDiv.setAttribute("id", "alertPlaceholder");
-        document.body.appendChild(createDiv);
-        alertPlaceholder = document.getElementById("alertPlaceholder");
-    }
+  // holder (sekali buat)
+  let holder = document.getElementById("alertPlaceholder");
+  if (!holder) {
+    holder = document.createElement("div");
+    holder.id = "alertPlaceholder";
+    holder.style.cssText = [
+      "position:fixed", "top:12px", "right:12px",
+      "display:flex", "flex-direction:column", "gap:8px",
+      "z-index:2000", "pointer-events:none"
+    ].join(";"); // container tidak menangkap klik
+    document.body.appendChild(holder);
+  }
 
-    if (type.search(/ok/i) >= 0) {
-        isiAlert = /* html */ ` 
-      <div id="isiAlert" 
-      style="z-index:2000; position:fixed; top:50px; right:10px; background-color: #15803d; color: white;" 
-      class="rounded-xl p-2 bg-green-700 text-white flex align-center" >
-      <span class="icon-circlecheck text-white text-lg"></span> &nbsp ${message} 
-      </div>`;
-    } else if (type.search(/bad/i) >= 0) {
-        isiAlert = /* html */ `<div id="isiAlert" 
-        style="z-index:2000; position:fixed; top:50px; right:10px; background-color: #b91c1c; color: white;" 
-        class="rounded-xl p-2  bg-red-700 text-white flex align-center" >
-        <span class="icon-circleclose2 text-white text-lg"></span> &nbsp ${message}</div>`;
-    } else {
-        isiAlert = /* html */ `<div id="isiAlert" 
-      style="z-index:2000;  position:fixed; top:50px; right:10px;" 
-      class="rounded-xl p-2 bg-orange-400 text-black  flex align-center" >
-        <span class="icon-circlepentung text-black text-lg"></span> &nbsp ${message} 
-      </div>`;
-    }
+  // mapping warna & ikon
+  const key   = /ok/i.test(type) ? "ok" : /bad/i.test(type) ? "bad" : "info";
+  const theme = {
+    ok:   { bg: "#15803d", fg: "#fff", icon: "✓" },
+    bad:  { bg: "#b91c1c", fg: "#fff", icon: "⚠" },
+    info: { bg: "#f59e0b", fg: "#000", icon: "ℹ" },
+  }[key];
 
-    alertPlaceholder.innerHTML = isiAlert;
+  // buat satu toast
+  const toast = document.createElement("div");
+  toast.role = "status";
+  toast.style.cssText = [
+    "pointer-events:auto", // biar bisa diklik
+    `background:${theme.bg}`, `color:${theme.fg}`,
+    "padding:.5rem .75rem", "border-radius:.5rem",
+    "box-shadow:0 10px 15px rgba(0,0,0,.1)",
+    "display:flex", "align-items:center", "gap:.5rem",
+    "max-width: min(90vw, 28rem)"
+  ].join(";");
+  toast.className = "animate__animated animate__fadeInDown";
 
-    isiAlertDiv = document.getElementById("isiAlert");
-    isiAlertDiv.classList.add("animate__animated");
-    isiAlertDiv.classList.add("animate__fadeInRight");
+  // aman dari HTML injection
+  const msgEl = document.createElement("span");
+  msgEl.textContent = text;
 
-    setTimeout(function () {
-        isiAlertDiv.classList.remove("animate__fadeInRight");
-        isiAlertDiv.classList.add("animate__fadeOutRight");
-    }, 3000);
+  const iconEl = document.createElement("span");
+  iconEl.setAttribute("aria-hidden", "true");
+  iconEl.textContent = theme.icon;
+
+  toast.appendChild(iconEl);
+  toast.appendChild(msgEl);
+  holder.appendChild(toast);
+
+  // fungsi tutup (animasi keluar)
+  const close = () => {
+    toast.classList.remove("animate__fadeInDown");
+    toast.classList.add("animate__fadeOutUp");
+    setTimeout(() => toast.remove(), 350);
+  };
+
+  // auto-close + klik untuk tutup
+  const timer = setTimeout(close, duration);
+  toast.addEventListener("click", () => { clearTimeout(timer); close(); });
 };
+
 
 function modifierClass(identifier, jenis, classs) {
     if (jenis == "add") {

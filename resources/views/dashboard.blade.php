@@ -19,7 +19,7 @@
         <div class="bg-[#e0f2f7] p-6 rounded-xl shadow-sm border border-[#b2e6f7]">
             <h4 class="text-lg font-semibold text-[#63b3ed] mb-2">Mulai Skrining Baru</h4>
             <p class="text-gray-700 mb-4">Lakukan skrining kesehatan mental Anda.</p>
-            <a href="#" class="btn-primary w-full inline-block text-center">Mulai Skrining</a>
+            <a href="{{ route('skrining.epds') }}" class="btn-primary w-full inline-block text-center">Mulai Skrining</a>
         </div>
         <div class="bg-[#fde6ed] p-6 rounded-xl shadow-sm border border-[#fbd3d3]">
             <h4 class="text-lg font-semibold text-[#e53e3e] mb-2">Edukasi Kesehatan</h4>

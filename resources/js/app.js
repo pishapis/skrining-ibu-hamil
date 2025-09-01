@@ -39,6 +39,23 @@ window.registerWizard = function () {
   }
 }
 
+window.updateWizard = function () {
+  return {
+    step: 0,
+    steps: ['Akun', 'Data Ibu'],
+    ibu: { tanggal_lahir: '' },
+    jumlahAnak: 0,
+    next(){
+      const sec = this.$refs['s'+this.step]
+      const inputs = [...sec.querySelectorAll('input, select, textarea')]
+      for (const el of inputs) { if (el.required && !el.value) { el.reportValidity(); el.focus(); return } }
+      if (this.step < this.steps.length-1) this.step++
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    },
+    prev(){ if (this.step>0){ this.step--; window.scrollTo({ top:0, behavior:'smooth' }) } },
+  }
+}
+
 Alpine.start()
 
 // --- Swup + Plugins ---

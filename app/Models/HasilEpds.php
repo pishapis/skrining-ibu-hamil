@@ -10,12 +10,40 @@ class HasilEpds extends Model
     protected $primaryKey = 'id';
     public $timestamps = true;
     protected $fillable = [
-        'ibu_id','epds_id','answers_epds_id','screening_date','usia_hamil_id',
-        'status','session_token','trimester','total_score','started_at','submitted_at'
+        'ibu_id',
+        'epds_id',
+        'answers_epds_id',
+        'screening_date',
+        'usia_hamil_id',
+        'status',
+        'session_token',
+        'trimester',
+        'total_score',
+        'started_at',
+        'submitted_at',
+        'rescreen_token_id',
+        'batch_no'
     ];
 
-    public function ibu()        { return $this->belongsTo(DataDiri::class,'ibu_id'); }
-    public function epds()       { return $this->belongsTo(SkriningEpds::class,'epds_id'); }
-    public function answersEpds(){ return $this->belongsTo(AnswerEpds::class,'answers_epds_id'); }
-    public function usiaHamil()  { return $this->belongsTo(UsiaHamil::class,'usia_hamil_id'); }
+    public function rescreenToken()
+    {
+        return $this->belongsTo(RescreenToken::class, 'rescreen_token_id');
+    }
+
+    public function ibu()
+    {
+        return $this->belongsTo(DataDiri::class, 'ibu_id');
+    }
+    public function epds()
+    {
+        return $this->belongsTo(SkriningEpds::class, 'epds_id');
+    }
+    public function answersEpds()
+    {
+        return $this->belongsTo(AnswerEpds::class, 'answers_epds_id');
+    }
+    public function usiaHamil()
+    {
+        return $this->belongsTo(UsiaHamil::class, 'usia_hamil_id');
+    }
 }
