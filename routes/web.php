@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SkriningController;
 use App\Http\Controllers\RiwayatSkriningController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Filter\FilterAlamatController;
 use App\Http\Controllers\Master\PenggunaController;
 use App\Http\Controllers\Admin\RescreenTokenController;
@@ -10,9 +11,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware(['auth', 'verified', 'is_superadmin'])->group(function () {
 
@@ -49,7 +50,7 @@ Route::middleware(['auth', 'verified', 'is_user'])->group(function () {
     });
 
     Route::controller(RiwayatSkriningController::class)->group(function () {
-        
+        Route::get('riwayat-skrining', 'index')->name('riwayat.skrining');
     });
 });
 

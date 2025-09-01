@@ -1,14 +1,14 @@
-<nav class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-2 z-[9999]"
+<nav id="nav-mobile" class="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-2 z-[9999]"
     style="padding-bottom: calc(env(safe-area-inset-bottom) + 0.25rem);">
     <div class="flex justify-around">
-        <a href="{{ route('dashboard') }}"
+        <a href="{{ url('/') }}"
             @class(['flex flex-col items-center text-xs', request()->routeIs('dashboard') ? 'text-[#63b3ed]' : 'text-gray-400'])>
             <svg class="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
             </svg>
             Beranda
         </a>
-        <a href="{{ route('skrining.epds') }}"
+        <a href="{{ url('/skrining') }}"
             @class(['flex flex-col items-center text-xs', request()->routeIs('skrining.epds') ? 'text-[#63b3ed]' : 'text-gray-400'])>
             <svg class="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
@@ -22,7 +22,8 @@
             </svg>
             Edukasi
         </a>
-        <a href="#" class="flex flex-col items-center text-xs text-gray-400">
+        <a href="{{ url('/riwayat-skrining') }}" 
+            @class(['flex flex-col items-center text-xs', request()->routeIs('riwayat.skrining') ? 'text-[#63b3ed]' : 'text-gray-400'])>
             <svg class="w-5 h-5 mb-0.5" xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                 stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Riwayat">

@@ -137,6 +137,7 @@ const progressEnd = () => {
   setTimeout(() => { bar.style.opacity = '0' }, 200)
 }
 
+swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} })
 swup.hooks.on('visit:start',  progressStart) // klik/link/submit dimulai
 swup.hooks.on('page:view',    progressEnd)   // halaman baru siap terlihat
 swup.hooks.on('visit:end',    progressEnd)   // fallback selesai

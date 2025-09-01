@@ -1,5 +1,5 @@
 {{-- Sidebar (desktop) --}}
-<aside class="hidden md:flex md:flex-col w-64 bg-white p-6 border-r border-gray-200 min-h-screen shadow-sm">
+<aside id="sidebar" class="hidden md:flex md:flex-col w-64 bg-white p-6 border-r border-gray-200 min-h-screen shadow-sm">
     <div class="p-4 mb-8 text-center">
         <img src="https://placehold.co/100x100/A7EDEC/ffffff?text=Logo" alt="Logo" class="mx-auto mb-4 rounded-full">
         <h3 class="text-lg font-semibold text-gray-800">Skrining Mental Ibu</h3>
@@ -7,7 +7,7 @@
     <nav data-swup-preload-all class="space-y-2">
         <!-- Menu untuk semua pengguna -->
         <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('dashboard') ? 'bg-blue-100 text-blue-800' : ''])>
-            <a href="{{ route('dashboard') }}">
+            <a href="{{ url('/') }}">
                 <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                 </svg>
@@ -102,7 +102,7 @@
 
         @if (Auth::user()->role_id == 1)
         <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('skrining.epds') ? 'bg-blue-100 text-blue-800' : ''])>
-            <a href="{{ route('skrining.epds') }}">
+            <a href="{{ url('/skrining') }}">
                 <svg class="inline-block mr-2 w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                     <path fill-rule="evenodd" d="M4 5a2 2 0 012-2V1a1 1 0 10-2 0v2H4zm5 0V1a1 1 0 10-2 0v2H7zm4 0V1a1 1 0 10-2 0v2H9zm2-2a2 2 0 012 2h2V1a1 1 0 10-2 0v2h-2zM5 5h10V18a2 2 0 01-2 2H7a2 2 0 01-2-2V5zm12 0h-1V3h1a2 2 0 012 2v13a2 2 0 01-2 2h-1V5z" clip-rule="evenodd" />
@@ -118,8 +118,8 @@
                 Edukasi
             </a>
         </div>
-        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600'])>
-            <a href="#">
+        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('riwayat.skrining') ? 'bg-blue-100 text-blue-800' : ''])>
+            <a href="{{ url('/riwayat-skrining') }}">
                 <svg class="inline-block mr-2 w-5 h-5 mb-0.5" xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                     stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Riwayat">
