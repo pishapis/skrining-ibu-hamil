@@ -1,0 +1,70 @@
+{{-- resources/views/layouts/app.blade.php --}}
+@props(['title' => 'Skrining Ibu Hamil'])
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ $title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ asset('assets/css/animate-style.css') }}" />
+    @vite(['resources/css/app.css','resources/js/app.js'])
+    <script src="{{ asset('assets/js/skrining.js') }}" defer></script>
+
+
+    <style>
+        [x-cloak] {
+            display: none !important
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif
+        }
+
+        /* animasi keluar */
+    </style>
+    @yield('css')
+</head>
+
+<body class="bg-slate-100 min-h-screen">
+    <div id="swup-progress" aria-hidden="true"></div>
+    <div id="app-frame" data-swup-container x-data="{ openSidebar:false }" x-bind:class="{ 'overflow-hidden': openSidebar }">
+        <div class="min-h-screen md:flex">
+
+            @include('layouts.sidebar-desktop')
+            {{-- Main --}}
+            <div class="flex-1">
+                <main class="p-4 md:p-8 pb-24 md:pb-8">
+                    {{-- Topbar (desktop) --}}
+                    <header class="hidden md:flex items-center gap-4 bg-white border border-gray-200 rounded-2xl shadow-sm p-4 mb-6">
+                        <div class="font-semibold">@yield('page_title','Dashboard')</div>
+                        <form method="POST" action="{{ route('logout') }}" class="ml-auto" enctype="multipart/form-data">
+                            @csrf
+                            <button class="px-3 py-1.5 rounded-lg border text-sm">Keluar</button>
+                        </form>
+                    </header>
+
+                    <x-flash />
+
+                    <div id="swup" data-swup-container class="transition-slide">
+                        {{-- Content --}}
+                        {{ $slot }}
+                    </div>
+                </main>
+            </div>
+
+            @include('layouts.navigation-mobile')
+
+            @include('layouts.footer')
+
+        </div>
+        {{ $scripts ?? '' }}
+    </div>
+
+
+</body>
+
+
+</html>

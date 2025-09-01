@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Skrining Kesehatan Mental Ibu Hamil</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Memuat Tailwind CSS dari CDN untuk styling responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Gaya dasar untuk font dan warna latar belakang */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f4f8; /* Biru-abu muda pastel */
+            color: #333;
+        }
+        /* Kontainer utama untuk mengatur lebar konten */
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 2rem;
+        }
+        /* Gaya untuk setiap kartu mockup */
+        .mockup-card {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Sudut lebih membulat */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08); /* Bayangan lebih kuat */
+            padding: 2.5rem;
+            margin-bottom: 2.5rem;
+            border: 1px solid #e2e8f0; /* Garis tepi tipis */
+        }
+        /* Gaya untuk bagian header di setiap kartu */
+        .header-section {
+            background-color: #e6f7ff; /* Biru lebih muda untuk header */
+            padding: 1.5rem 2rem;
+            border-radius: 1.25rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c5282; /* Teks biru lebih gelap */
+        }
+        /* Gaya untuk tombol utama (primary) */
+        .btn-primary {
+            background-color: #81e6d9; /* Hijau pastel */
+            color: #2d3748; /* Teks gelap untuk kontras */
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem; /* Sedikit lebih membulat */
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #6ed1c1; /* Hijau lebih gelap saat hover */
+        }
+        /* Gaya untuk tombol sekunder */
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #4a5568;
+            padding: 0.75rem 1.5rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background-color: #edf2f7;
+            border-color: #a0aec0;
+        }
+        /* Gaya untuk bidang input form */
+        .input-field {
+            border: 1px solid #cbd5e0;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #81e6d9; /* Warna fokus */
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(129, 230, 217, 0.4);
+        }
+        /* Gaya untuk progress bar */
+        .progress-bar {
+            background-color: #e2e8f0;
+            border-radius: 0.75rem;
+            height: 0.75rem;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background-color: #63b3ed; /* Biru pastel */
+            height: 100%;
+            border-radius: 0.75rem;
+        }
+        /* Gaya untuk loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #63b3ed;
+            animation: spin 1s ease infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Gaya khusus untuk perangkat mobile (maksimal lebar 768px) */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem; /* Padding lebih kecil untuk mobile */
+            }
+            .mockup-card {
+                padding: 1.5rem; /* Padding kartu lebih kecil */
+            }
+            .header-section {
+                font-size: 1.25rem;
+                padding: 1rem 1.5rem;
+            }
+            /* Navigasi bawah untuk mobile */
+            .bottom-navigation {
+                display: flex;
+                justify-content: space-around;
+                position: fixed; /* Tetap di bagian bawah layar */
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background-color: #ffffff;
+                border-top: 1px solid #e2e8f0;
+                padding: 0.75rem 0;
+                box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.05);
+                z-index: 1000;
+            }
+            .bottom-navigation-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                color: #a0aec0;
+                font-size: 0.75rem;
+                font-weight: 500;
+            }
+            .bottom-navigation-item.active {
+                color: #63b3ed; /* Warna aktif untuk item navigasi */
+            }
+            .bottom-navigation-item svg {
+                width: 1.5rem;
+                height: 1.5rem;
+                margin-bottom: 0.25rem;
+            }
+        }
+
+        /* Gaya khusus untuk perangkat desktop (minimal lebar 769px) */
+        @media (min-width: 769px) {
+            .desktop-layout {
+                display: flex; /* Menggunakan flexbox untuk layout sidebar dan konten utama */
+            }
+            /* Sidebar navigasi untuk desktop */
+            .sidebar {
+                width: 250px;
+                background-color: #ffffff;
+                padding: 2rem;
+                border-right: 1px solid #e2e8f0;
+                min-height: 100vh; /* Tinggi minimal seukuran viewport */
+                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.03);
+                border-radius: 0 1.5rem 1.5rem 0;
+            }
+            .main-content {
+                flex-grow: 1; /* Konten utama mengambil sisa ruang */
+                padding: 2rem;
+            }
+            /* Gaya item sidebar */
+            .sidebar-item {
+                padding: 0.75rem 1rem;
+                margin-bottom: 0.5rem;
+                border-radius: 0.75rem;
+                color: #4a5568;
+                font-weight: 500;
+                transition: background-color 0.3s ease, color 0.3s ease;
+            }
+            .sidebar-item:hover {
+                background-color: #e6fffa; /* Hijau muda saat hover */
+                color: #38b2ac; /* Teal */
+            }
+            .sidebar-item.active {
+                background-color: #bee3f8; /* Biru muda saat aktif */
+                color: #2c5282; /* Biru lebih gelap */
+                font-weight: 600;
+            }
+        }
+    </style>
+</head>
+<body class="bg-[#f0f4f8]">
+    <!-- Kontainer Keseluruhan Aplikasi -->
+    <div class="container">
+        <!-- Bagian: Splash & Halaman Login/Daftar -->
+        <section class="mockup-card">
+            <h2 class="header-section">1. Splash & Halaman Login/Daftar</h2>
+
+            <!-- Layar Splash Mobile (Tampil hanya di mobile, disembunyikan di desktop) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-sm mx-auto shadow-md block md:hidden">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Layar Splash Mobile</h3>
+                <div class="flex flex-col items-center justify-center h-64 bg-[#e0f2f7] rounded-xl shadow-inner">
+                    <!-- Icon placeholder untuk logo aplikasi -->
+                    <svg class="w-24 h-24 text-[#81e6d9] mb-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15H9v-2h2v2zm0-4H9V7h2v6zm5 0h-2V7h2v6zm0 4h-2v-2h2v2z"/>
+                    </svg>
+                    <p class="text-2xl font-bold text-[#63b3ed]">Skrining Mental Ibu</p>
+                    <p class="text-sm text-gray-500 mt-1">Aplikasi Kesehatan Mental Ibu Hamil</p>
+                </div>
+                <p class="text-center text-gray-500 text-sm mt-4">Memuat aplikasi...</p>
+            </div>
+
+            <!-- Halaman Login (Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-sm mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Halaman Login</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-2xl font-bold text-center text-gray-800 mb-6">Selamat Datang Kembali!</h4>
+                    <form>
+                        <div class="mb-4">
+                            <label for="email" class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                            <input type="email" id="email" placeholder="email@example.com" class="input-field">
+                        </div>
+                        <div class="mb-6">
+                            <label for="password" class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                            <input type="password" id="password" placeholder="********" class="input-field">
+                        </div>
+                        <button type="submit" class="btn-primary w-full">Masuk</button>
+                        <p class="text-center text-gray-600 text-sm mt-4">Belum punya akun? <a href="#" class="text-[#63b3ed] font-medium hover:underline">Daftar Sekarang</a></p>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Formulir Pendaftaran Multi-step (Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-md mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Form Pendaftaran Multi-Step</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-2xl font-bold text-center text-gray-800 mb-6">Daftar Akun Baru</h4>
+                    <div class="progress-bar mb-6">
+                        <div class="progress-bar-fill w-1/4" style="width: 25%;"></div>
+                    </div>
+                    <p class="text-center text-sm text-gray-600 mb-6">Langkah 1 dari 4: Data Ibu</p>
+                    <form>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Nama Ibu</label>
+                            <input type="text" placeholder="Nama Lengkap" class="input-field">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">NIK</label>
+                            <input type="text" placeholder="Nomor Induk Kependudukan" class="input-field">
+                        </div>
+                        <div class="mb-4 flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
+                            <div class="flex-1">
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Tempat Lahir</label>
+                                <input type="text" placeholder="Kota" class="input-field">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Tanggal Lahir</label>
+                                <input type="date" class="input-field">
+                            </div>
+                        </div>
+                        <!-- Tambahkan bidang lain untuk Langkah 1 di sini -->
+                        <div class="flex justify-end mt-6">
+                            <button type="button" class="btn-primary">Lanjut</button>
+                        </div>
+                    </form>
+                    <!-- Struktur serupa akan digunakan untuk Langkah 2, 3, dan 4, dengan memperbarui progress bar dan bidang formulir -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Bagian: Dashboard / Beranda -->
+        <section class="mockup-card">
+            <h2 class="header-section">2. Dashboard / Beranda</h2>
+
+            <!-- Tata Letak Desktop Dashboard (Tampil hanya di desktop) -->
+            <div class="desktop-layout hidden md:flex">
+                <div class="sidebar">
+                    <div class="p-4 mb-8 text-center">
+                        <!-- Placeholder untuk logo aplikasi -->
+                        <img src="https://placehold.co/100x100/A7EDEC/ffffff?text=Logo" alt="App Logo" class="mx-auto mb-4 rounded-full">
+                        <h3 class="text-lg font-semibold text-gray-800">Skrining Mental Ibu</h3>
+                    </div>
+                    <nav>
+                        <!-- Item Navigasi Sidebar -->
+                        <a href="#" class="sidebar-item active">
+                            <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
+                            Beranda
+                        </a>
+                        <a href="#" class="sidebar-item">
+                            <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2V1a1 1 0 10-2 0v2H4zm5 0V1a1 1 0 10-2 0v2H7zm4 0V1a1 1 0 10-2 0v2H9zm2-2a2 2 0 012 2h2V1a1 1 0 10-2 0v2h-2zM5 5h10V18a2 2 0 01-2 2H7a2 2 0 01-2-2V5zm12 0h-1V3h1a2 2 0 012 2v13a2 2 0 01-2 2h-1V5z" clip-rule="evenodd"></path></svg>
+                            Skrining
+                        </a>
+                        <a href="#" class="sidebar-item">
+                            <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM6 10a4 4 0 118 0 4 4 0 01-8 0z"></path></svg>
+                            Edukasi
+                        </a>
+                        <a href="#" class="sidebar-item">
+                            <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"></path></svg>
+                            Akun
+                        </a>
+                        <a href="#" class="sidebar-item">
+                            <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.707 3.293a1 1 0 00-1.414-1.414L9 8.586 7.707 7.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                            Riwayat
+                        </a>
+                    </nav>
+                </div>
+                <div class="main-content">
+                    <div class="bg-white p-8 rounded-xl shadow-md mb-6">
+                        <h3 class="text-3xl font-bold text-gray-800 mb-2">Halo, Ibu Sarah! 👋</h3>
+                        <p class="text-gray-600 text-lg">Selamat datang kembali di Aplikasi Skrining Kesehatan Mental Ibu Hamil.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-[#d1f7ef] p-6 rounded-xl shadow-sm border border-[#a7edec]">
+                            <h4 class="text-lg font-semibold text-[#38b2ac] mb-2">Jadwal ANC Berikutnya</h4>
+                            <p class="text-xl font-bold text-gray-800">15 Agustus 2025</p>
+                            <p class="text-sm text-gray-600">Puskesmas Maju Jaya, Pukul 10:00 WIB</p>
+                        </div>
+                        <div class="bg-[#e0f2f7] p-6 rounded-xl shadow-sm border border-[#b2e6f7]">
+                            <h4 class="text-lg font-semibold text-[#63b3ed] mb-2">Mulai Skrining Baru</h4>
+                            <p class="text-gray-700 mb-4">Lakukan skrining kesehatan mental Anda.</p>
+                            <button class="btn-primary w-full">Mulai Skrining</button>
+                        </div>
+                        <div class="bg-[#fde6ed] p-6 rounded-xl shadow-sm border border-[#fbd3d3]">
+                            <h4 class="text-lg font-semibold text-[#e53e3e] mb-2">Edukasi Kesehatan</h4>
+                            <p class="text-gray-700 mb-4">Pelajari lebih lanjut tentang kesehatan mental ibu hamil.</p>
+                            <button class="btn-secondary w-full">Lihat Edukasi</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tata Letak Mobile Dashboard (Tampil hanya di mobile) -->
+            <div class="block md:hidden">
+                <div class="bg-white p-6 rounded-xl shadow-md mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">Halo, Ibu Sarah! 👋</h3>
+                    <p class="text-gray-600">Selamat datang kembali.</p>
+                </div>
+
+                <div class="flex flex-col space-y-4 mb-4">
+                    <div class="bg-[#d1f7ef] p-5 rounded-xl shadow-sm border border-[#a7edec]">
+                        <h4 class="text-md font-semibold text-[#38b2ac] mb-1">Jadwal ANC Berikutnya</h4>
+                        <p class="text-lg font-bold text-gray-800">15 Agustus 2025</p>
+                        <p class="text-xs text-gray-600">Puskesmas Maju Jaya</p>
+                    </div>
+                    <button class="btn-primary w-full p-4 text-lg">Mulai Skrining Baru</button>
+                    <button class="btn-secondary w-full p-4 text-lg">Lihat Materi Edukasi</button>
+                </div>
+                <!-- Navigasi Bawah untuk Mobile -->
+                <div class="bottom-navigation">
+                    <a href="#" class="bottom-navigation-item active">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
+                        Beranda
+                    </a>
+                    <a href="#" class="bottom-navigation-item">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2V1a1 1 0 10-2 0v2H4zm5 0V1a1 1 0 10-2 0v2H7zm4 0V1a1 1 0 10-2 0v2H9zm2-2a2 2 0 012 2h2V1a1 1 0 10-2 0v2h-2zM5 5h10V18a2 2 0 01-2 2H7a2 2 0 01-2-2V5zm12 0h-1V3h1a2 2 0 012 2v13a2 2 0 01-2 2h-1V5z" clip-rule="evenodd"></path></svg>
+                        Skrining
+                    </a>
+                    <a href="#" class="bottom-navigation-item">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM6 10a4 4 0 118 0 4 4 0 01-8 0z"></path></svg>
+                        Edukasi
+                    </a>
+                    <a href="#" class="bottom-navigation-item">
+                        <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"></path></svg>
+                        Akun
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bagian: Halaman Skrining -->
+        <section class="mockup-card">
+            <h2 class="header-section">3. Halaman Skrining</h2>
+
+            <!-- Pilih Jenis Skrining (Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-lg mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Pilih Jenis Skrining</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <button class="btn-secondary w-full mb-4 p-3 text-lg">Skrining EPDS (10 Pertanyaan)</button>
+                    <button class="btn-secondary w-full p-3 text-lg">Skrining DASS-21 (21 Pertanyaan)</button>
+                </div>
+            </div>
+
+            <!-- Pertanyaan Skrining (Contoh EPDS - Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-lg mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Skrining EPDS</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <div class="progress-bar mb-6">
+                        <div class="progress-bar-fill w-2/10" style="width: 20%;"></div>
+                    </div>
+                    <p class="text-center text-sm text-gray-600 mb-6">Pertanyaan 1 dari 10</p>
+                    <p class="text-lg font-medium text-gray-800 mb-4">Saya dapat tertawa dan melihat segi kelucuan hal-hal tertentu:</p>
+                    <div class="flex flex-col space-y-3">
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-[#63b3ed] h-5 w-5" name="q1" value="0">
+                            <span class="ml-2 text-gray-700">Seperti biasanya</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-[#63b3ed] h-5 w-5" name="q1" value="1">
+                            <span class="ml-2 text-gray-700">Tidak begitu sering</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-[#63b3ed] h-5 w-5" name="q1" value="2">
+                            <span class="ml-2 text-gray-700">Jarang</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio text-[#63b3ed] h-5 w-5" name="q1" value="3">
+                            <span class="ml-2 text-gray-700">Tidak pernah</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-between mt-6">
+                        <button class="btn-secondary">Kembali</button>
+                        <button class="btn-primary">Lanjut</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bagian: Halaman Hasil Skrining -->
+        <section class="mockup-card">
+            <h2 class="header-section">4. Halaman Hasil Skrining</h2>
+
+            <!-- Contoh Hasil EPDS (Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-lg mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Hasil Skrining EPDS Anda</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                    <p class="text-gray-600 text-lg mb-2">Skor Total Anda:</p>
+                    <p class="text-6xl font-extrabold text-[#63b3ed] mb-6">15</p>
+                    <p class="text-2xl font-semibold text-red-600 mb-4">Terindikasi Depresi</p>
+                    <p class="text-gray-700 mb-6">Skor EPDS Anda 15 menunjukkan kemungkinan adanya gejala depresi. Penting untuk melakukan konsultasi lebih lanjut.</p>
+
+                    <button class="btn-primary w-full mb-3">Lihat Materi Edukasi</button>
+                    <button class="btn-secondary w-full">Kembali ke Beranda</button>
+                </div>
+            </div>
+
+            <!-- Contoh Hasil DASS-21 (dengan pop-up simulasi - Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-lg mx-auto shadow-md relative">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Hasil Skrining DASS-21 Anda</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                    <p class="text-gray-600 text-lg mb-2">Skor Depresi:</p>
+                    <p id="dass-depresi-score" class="text-4xl font-extrabold text-[#63b3ed] mb-4">5</p>
+                    <p class="text-2xl font-semibold text-green-600 mb-6">Normal</p>
+
+                    <p class="text-gray-600 text-lg mb-2">Skor Kecemasan:</p>
+                    <p id="dass-kecemasan-score" class="text-4xl font-extrabold text-[#63b3ed] mb-4">12</p>
+                    <p class="text-2xl font-semibold text-orange-600 mb-6">Sedang</p>
+
+                    <p class="text-gray-600 text-lg mb-2">Skor Stres:</p>
+                    <p id="dass-stres-score" class="text-4xl font-extrabold text-[#63b3ed] mb-4">16</p>
+                    <p class="text-2xl font-semibold text-red-600 mb-6">Ringan</p>
+
+                    <p class="text-gray-700 mb-6">Analisis DASS-21 Anda menunjukkan tingkat kecemasan sedang. Kami merekomendasikan Anda untuk konsultasi.</p>
+
+                    <button id="interpretasi-dass-btn" class="btn-primary w-full mb-3">Interpretasi Lanjut ✨</button>
+                    <div id="dass-interpretation-loading" class="hidden text-center mt-4">
+                        <div class="spinner"></div>
+                        <p class="text-sm text-gray-600 mt-2">Menghasilkan interpretasi...</p>
+                    </div>
+                    <div id="dass-interpretation-output" class="text-left bg-gray-100 p-4 rounded-lg mt-4 text-gray-800 hidden"></div>
+
+                    <button class="btn-secondary w-full mt-3">Kembali ke Beranda</button>
+                </div>
+
+                <!-- Pop-up Overlay (disimulasikan - akan muncul berdasarkan logika JS) -->
+                <div id="dass-popup" class="hidden absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4">
+                    <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm text-center">
+                        <svg class="w-16 h-16 mx-auto text-orange-500 mb-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>
+                        <h4 class="text-2xl font-bold text-gray-800 mb-4">Perhatian!</h4>
+                        <p class="text-gray-700 mb-6">Skor Kecemasan Anda 12. Silakan Anda bertemu dan konsultasi ke Bidan dan Psikolog untuk tindak lanjut.</p>
+                        <button id="close-dass-popup" class="btn-primary w-full">Oke, Paham</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bagian: Halaman Edukasi -->
+        <section class="mockup-card">
+            <h2 class="header-section">5. Halaman Edukasi</h2>
+
+            <!-- Daftar Materi Edukasi (Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-lg mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Materi Edukasi</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <div class="flex flex-col space-y-4">
+                        <a href="#" class="bg-[#d1f7ef] p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                            <h4 class="text-lg font-semibold text-[#38b2ac]">Mengenali Tanda-tanda Depresi pada Ibu Hamil</h4>
+                            <p class="text-sm text-gray-600">Artikel tentang gejala dan cara identifikasi.</p>
+                        </a>
+                        <a href="#" class="bg-[#e0f2f7] p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                            <h4 class="text-lg font-semibold text-[#63b3ed]">Mengelola Stres Selama Kehamilan</h4>
+                            <p class="text-sm text-gray-600">Teknik relaksasi dan tips praktis.</p>
+                        </a>
+                        <a href="#" class="bg-[#fde6ed] p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                            <h4 class="text-lg font-semibold text-[#e53e3e]">Pentingnya Dukungan Sosial Bagi Ibu Hamil</h4>
+                            <p class="text-sm text-gray-600">Peran keluarga dan komunitas.</p>
+                        </a>
+                    </div>
+                    <button id="saran-harian-btn" class="btn-primary w-full mt-6 p-3 text-lg">Saran Harian Kesehatan Mental ✨</button>
+                    <div id="saran-harian-loading" class="hidden text-center mt-4">
+                        <div class="spinner"></div>
+                        <p class="text-sm text-gray-600 mt-2">Menghasilkan saran...</p>
+                    </div>
+                    <div id="saran-harian-output" class="text-left bg-gray-100 p-4 rounded-lg mt-4 text-gray-800 hidden"></div>
+                </div>
+            </div>
+
+            <!-- Halaman Detail Edukasi (Teks & Video - Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-2xl mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Detail Materi: Mengelola Stres</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-2xl font-bold text-gray-800 mb-4">Mengelola Stres Selama Kehamilan</h4>
+                    <p class="text-gray-700 mb-6 leading-relaxed">
+                        Kehamilan adalah periode yang indah namun juga dapat memicu stres. Penting bagi ibu hamil untuk mengenali dan mengelola stres demi kesehatan mental dan fisik, serta pertumbuhan bayi. Stres yang tidak terkontrol dapat berdampak negatif pada ibu dan janin.
+                    </p>
+                    <p class="text-gray-700 mb-6 leading-relaxed">
+                        Beberapa tips untuk mengelola stres: <br>
+                        1. Istirahat Cukup: Pastikan Anda mendapatkan tidur yang berkualitas. <br>
+                        2. Nutrisi Seimbang: Konsumsi makanan bergizi. <br>
+                        3. Olahraga Ringan: Lakukan aktivitas fisik yang aman untuk ibu hamil. <br>
+                        4. Meditasi & Relaksasi: Latih pernapasan dalam atau yoga prenatal. <br>
+                        5. Berbagi Perasaan: Ajak bicara pasangan, keluarga, atau teman dekat.
+                    </p>
+
+                    <h5 class="text-xl font-semibold text-gray-800 mb-3">Video Edukasi</h5>
+                    <div class="aspect-video w-full mb-6 rounded-xl overflow-hidden shadow-lg">
+                        <!-- Embed video YouTube -->
+                        <iframe width="100%" height="auto" src="https://www.youtube.com/embed/hE1dZMkAbko" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </div>
+
+                    <div class="flex justify-between mt-6">
+                        <button class="btn-secondary">Kembali ke Daftar Materi</button>
+                        <button class="btn-primary">Artikel Selanjutnya</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bagian: Halaman Riwayat Skrining -->
+        <section class="mockup-card">
+            <h2 class="header-section">6. Halaman Riwayat Skrining</h2>
+
+            <!-- Tabel Riwayat (Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-3xl mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Riwayat Skrining Anda</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Tanggal</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Tes</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Skor</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-lg">Tindak Lanjut</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">12 Agt 2025</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">EPDS</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">8</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">Edukasi & Skrining Ulang</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">01 Jul 2025</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">DASS-21</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Depresi: 10, Kecemasan: 12, Stres: 16</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">Konsultasi Dokter & Psikolog</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">05 Jun 2025</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">EPDS</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">15</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">Konsultasi Bidan & Psikolog</td>
+                            </tr>
+                            <!-- Baris tambahan dapat ditambahkan di sini -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bagian: Halaman Pengaturan Akun -->
+        <section class="mockup-card">
+            <h2 class="header-section">7. Halaman Pengaturan Akun</h2>
+
+            <!-- Formulir Edit Profil (Tampil di desktop dan mobile) -->
+            <div class="mb-8 p-6 rounded-xl border border-gray-200 bg-gray-50 max-w-lg mx-auto shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-center text-gray-700">Pengaturan Akun</h3>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <form>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Edit Data Diri</h4>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Nama Ibu</label>
+                            <input type="text" value="Ibu Sarah" class="input-field">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                            <input type="email" value="sarah.hamil@example.com" class="input-field">
+                        </div>
+                        <!-- Tambahkan bidang lain yang dapat diedit di sini -->
+
+                        <h4 class="text-lg font-semibold text-gray-800 mt-6 mb-4">Ganti Password</h4>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Password Lama</label>
+                            <input type="password" placeholder="********" class="input-field">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Password Baru</label>
+                            <input type="password" placeholder="********" class="input-field">
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Konfirmasi Password Baru</label>
+                            <input type="password" placeholder="********" class="input-field">
+                        </div>
+
+                        <button type="submit" class="btn-primary w-full mb-3">Simpan Perubahan</button>
+                        <button type="button" class="btn-secondary w-full">Keluar Akun</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // Fungsi untuk panggilan Gemini API dengan exponential backoff
+        async function fetchGeminiResponse(prompt, outputElementId, loadingElementId, retries = 3, delay = 1000) {
+            const outputElement = document.getElementById(outputElementId);
+            const loadingElement = document.getElementById(loadingElementId);
+
+            outputElement.classList.add('hidden');
+            loadingElement.classList.remove('hidden');
+            outputElement.innerHTML = ''; // Clear previous content
+
+            try {
+                const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                const apiKey = ""; // Canvas akan menyediakan kunci API secara otomatis
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            if (response.status === 429 && i < retries - 1) { // Too Many Requests
+                                await new Promise(res => setTimeout(res, delay));
+                                delay *= 2; // Exponential backoff
+                                continue;
+                            }
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+
+                        if (result.candidates && result.candidates.length > 0 &&
+                            result.candidates[0].content && result.candidates[0].content.parts &&
+                            result.candidates[0].content.parts.length > 0) {
+                            const text = result.candidates[0].content.parts[0].text;
+                            outputElement.innerHTML = text;
+                            outputElement.classList.remove('hidden');
+                        } else {
+                            outputElement.innerHTML = 'Gagal mendapatkan interpretasi dari AI. Coba lagi nanti.';
+                            outputElement.classList.remove('hidden');
+                        }
+                        return; // Exit on success
+                    } catch (error) {
+                        if (i === retries - 1) { // Last retry failed
+                            console.error("Error fetching Gemini response:", error);
+                            outputElement.innerHTML = `Terjadi kesalahan: ${error.message}.`;
+                            outputElement.classList.remove('hidden');
+                        } else {
+                            // Log error for debugging but don't show to user yet as we're retrying
+                            console.warn(`Retry ${i + 1} failed, retrying...`, error);
+                            await new Promise(res => setTimeout(res, delay));
+                            delay *= 2;
+                        }
+                    }
+                }
+            } finally {
+                loadingElement.classList.add('hidden');
+            }
+        }
+
+        // Logika untuk pop-up DASS-21
+        document.addEventListener('DOMContentLoaded', () => {
+            const dassPopup = document.getElementById('dass-popup');
+            const closeDassPopupBtn = document.getElementById('close-dass-popup');
+
+            // Menampilkan pop-up setelah halaman dimuat (simulasi)
+            // Ini bisa dipicu oleh event lain di aplikasi nyata, misalnya setelah skrining selesai
+            // Untuk demo, kita tampilkan secara default jika ada elemennya.
+            if (dassPopup) {
+                // Untuk demo, pop-up akan tampil setelah beberapa saat
+                setTimeout(() => {
+                    dassPopup.classList.remove('hidden');
+                }, 1000);
+            }
+
+            // Menutup pop-up
+            if (closeDassPopupBtn) {
+                closeDassPopupBtn.addEventListener('click', () => {
+                    dassPopup.classList.add('hidden');
+                });
+            }
+
+            // Logika untuk tombol Interpretasi Lanjut DASS-21
+            const interpretasiDassBtn = document.getElementById('interpretasi-dass-btn');
+            if (interpretasiDassBtn) {
+                interpretasiDassBtn.addEventListener('click', () => {
+                    const depresiScore = document.getElementById('dass-depresi-score').innerText;
+                    const kecemasanScore = document.getElementById('dass-kecemasan-score').innerText;
+                    const stresScore = document.getElementById('dass-stres-score').innerText;
+
+                    // Anda bisa menambahkan logika untuk mengubah skor menjadi kategori (Normal, Ringan, dll)
+                    // Berdasarkan tabel yang diberikan di dokumen awal.
+                    const prompt = `Saya mendapatkan hasil skrining DASS-21 sebagai berikut: Depresi: ${depresiScore}, Kecemasan: ${kecemasanScore}, Stres: ${stresScore}. Berikan interpretasi yang empatik, apa artinya skor ini, dan berikan saran tindakan praktis yang bisa saya lakukan.`;
+
+                    fetchGeminiResponse(prompt, 'dass-interpretation-output', 'dass-interpretation-loading');
+                });
+            }
+
+            // Logika untuk tombol Saran Harian Kesehatan Mental
+            const saranHarianBtn = document.getElementById('saran-harian-btn');
+            if (saranHarianBtn) {
+                saranHarianBtn.addEventListener('click', () => {
+                    const prompt = `Berikan satu saran singkat dan positif tentang kesehatan mental untuk ibu hamil hari ini.`;
+                    fetchGeminiResponse(prompt, 'saran-harian-output', 'saran-harian-loading');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
