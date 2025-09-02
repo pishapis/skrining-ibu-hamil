@@ -15,10 +15,11 @@
     <!-- Header -->
     <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm mb-6">
         <div class="flex items-start justify-between gap-4">
-            <div>
+            <div class="md:hidden">
                 <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Halo, {{ $displayName }} 👋</h2>
                 <p class="text-gray-600 mt-1">Selamat datang di Aplikasi Skrining Kesehatan Mental Ibu Hamil.</p>
-            </div>
+            </divc>
+            @if (Auth::user()->role_id == 1)
             <div class="hidden md:block">
                 <a href="{{ route('skrining.epds') }}"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700">
@@ -28,6 +29,7 @@
                     Mulai Skrining
                 </a>
             </div>
+            @endif
         </div>
     </div>
 
@@ -46,92 +48,93 @@
     </div>
     @endif
 
-    <!-- KPI & Info Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
-
-        {{-- Usia Kehamilan --}}
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-            <p class="text-emerald-700 text-sm font-semibold mb-1">Usia Kehamilan</p>
-            <div class="text-gray-900 text-xl font-bold">{{ $usia['keterangan'] ?? '—' }}</div>
-            <div class="text-sm text-gray-600 mt-1">{{ $trimesterLabel }}</div>
-            @if(!empty($usia))
-            <div class="text-xs text-emerald-800 mt-3">
-                HPHT: {{ \Carbon\Carbon::parse($usia['hpht'])->translatedFormat('d M Y') }} •
-                HPL: {{ \Carbon\Carbon::parse($usia['hpl'])->translatedFormat('d M Y') }}
+    @if (Auth::user()->role_id ==  1)
+        <!-- KPI & Info Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+            {{-- Usia Kehamilan --}}
+            <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+                <p class="text-emerald-700 text-sm font-semibold mb-1">Usia Kehamilan</p>
+                <div class="text-gray-900 text-xl font-bold">{{ $usia['keterangan'] ?? '—' }}</div>
+                <div class="text-sm text-gray-600 mt-1">{{ $trimesterLabel }}</div>
+                @if(!empty($usia))
+                <div class="text-xs text-emerald-800 mt-3">
+                    HPHT: {{ \Carbon\Carbon::parse($usia['hpht'])->translatedFormat('d M Y') }} •
+                    HPL: {{ \Carbon\Carbon::parse($usia['hpl'])->translatedFormat('d M Y') }}
+                </div>
+                @else
+                <div class="text-xs text-emerald-800 mt-3">Lengkapi HPHT untuk kalkulasi usia kehamilan.</div>
+                @endif
             </div>
-            @else
-            <div class="text-xs text-emerald-800 mt-3">Lengkapi HPHT untuk kalkulasi usia kehamilan.</div>
-            @endif
+
+            {{-- Jadwal Skrining Berikutnya --}}
+            <div class="rounded-xl border border-sky-200 bg-sky-50 p-5">
+                <p class="text-sky-700 text-sm font-semibold mb-1">Jadwal Skrining Berikutnya</p>
+                @if($nextSchedule)
+                <div class="text-gray-900 text-lg font-bold">{{ $nextSchedule['phase'] }}</div>
+                <div class="text-sm text-gray-600 mt-1">
+                    Tanggal: {{ $nextSchedule['date_human'] }} {{ $nextSchedule['is_now'] ? '(tersedia sekarang)' : '' }}
+                </div>
+                <div class="mt-3">
+                    <a href="{{ route('skrining.epds') }}"
+                        class="inline-block text-xs px-3 py-1 rounded-lg bg-sky-600 text-white hover:bg-sky-700">Mulai / Lanjutkan</a>
+                </div>
+                @else
+                <div class="text-gray-900 text-lg font-bold">—</div>
+                <div class="text-sm text-gray-600 mt-1">Semua fase telah diselesaikan.</div>
+                @endif
+            </div>
+
+            {{-- EPDS terakhir --}}
+            <div class="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-5">
+                <p class="text-fuchsia-700 text-sm font-semibold mb-1">EPDS Terakhir</p>
+                <div class="text-gray-900 text-xl font-bold">{{ optional($latestEpds)->total_score ?? '—' }}</div>
+                <div class="text-sm text-gray-600 mt-1">
+                    {{ $latestEpds ? \Carbon\Carbon::parse($latestEpds->screening_date)->translatedFormat('d M Y') : 'Belum ada' }}
+                </div>
+                <div class="mt-3">
+                    <a href="{{ route('skrining.epds') }}"
+                        class="inline-block text-xs px-3 py-1 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-700">Skrining EPDS</a>
+                </div>
+            </div>
+
+            {{-- DASS terakhir --}}
+            <div class="rounded-xl border border-rose-200 bg-rose-50 p-5">
+                <p class="text-rose-700 text-sm font-semibold mb-1">DASS-21 Terakhir</p>
+                <div class="text-gray-900 font-bold">
+                    Dep {{ optional($latestDass)->total_depression ?? '—' }} •
+                    Anx {{ optional($latestDass)->total_anxiety ?? '—' }} •
+                    Str {{ optional($latestDass)->total_stress ?? '—' }}
+                </div>
+                <div class="text-sm text-gray-600 mt-1">
+                    {{ $latestDass ? \Carbon\Carbon::parse($latestDass->screening_date)->translatedFormat('d M Y') : 'Belum ada' }}
+                </div>
+                <div class="mt-3">
+                    <a href="{{ route('skrining.epds') }}"
+                        class="inline-block text-xs px-3 py-1 rounded-lg bg-rose-600 text-white hover:bg-rose-700">Skrining DASS-21</a>
+                </div>
+            </div>
         </div>
 
-        {{-- Jadwal Skrining Berikutnya --}}
-        <div class="rounded-xl border border-sky-200 bg-sky-50 p-5">
-            <p class="text-sky-700 text-sm font-semibold mb-1">Jadwal Skrining Berikutnya</p>
-            @if($nextSchedule)
-            <div class="text-gray-900 text-lg font-bold">{{ $nextSchedule['phase'] }}</div>
-            <div class="text-sm text-gray-600 mt-1">
-                Tanggal: {{ $nextSchedule['date_human'] }} {{ $nextSchedule['is_now'] ? '(tersedia sekarang)' : '' }}
-            </div>
-            <div class="mt-3">
-                <a href="{{ route('skrining.epds') }}"
-                    class="inline-block text-xs px-3 py-1 rounded-lg bg-sky-600 text-white hover:bg-sky-700">Mulai / Lanjutkan</a>
-            </div>
-            @else
-            <div class="text-gray-900 text-lg font-bold">—</div>
-            <div class="text-sm text-gray-600 mt-1">Semua fase telah diselesaikan.</div>
-            @endif
+        {{-- Aksi Cepat --}}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
+            <a href="{{ route('skrining.epds') }}" class="rounded-xl border p-4 text-center hover:shadow-sm">
+                <div class="text-sm font-semibold">Mulai Skrining</div>
+                <div class="text-xs text-gray-500 mt-1">EPDS / DASS-21</div>
+            </a>
+            <a href="{{ route('riwayat.skrining') }}" class="rounded-xl border p-4 text-center hover:shadow-sm">
+                <div class="text-sm font-semibold">Riwayat</div>
+                <div class="text-xs text-gray-500 mt-1">Hasil & Unduh</div>
+            </a>
+            <a href="#" class="rounded-xl border p-4 text-center hover:shadow-sm">
+                <div class="text-sm font-semibold">Edukasi</div>
+                <div class="text-xs text-gray-500 mt-1">Materi & Tips</div>
+            </a>
+            <a href="{{ route('profile.edit') }}" class="rounded-xl border p-4 text-center hover:shadow-sm">
+                <div class="text-sm font-semibold">Profil</div>
+                <div class="text-xs text-gray-500 mt-1">Data Diri</div>
+            </a>
         </div>
-
-        {{-- EPDS terakhir --}}
-        <div class="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-5">
-            <p class="text-fuchsia-700 text-sm font-semibold mb-1">EPDS Terakhir</p>
-            <div class="text-gray-900 text-xl font-bold">{{ optional($latestEpds)->total_score ?? '—' }}</div>
-            <div class="text-sm text-gray-600 mt-1">
-                {{ $latestEpds ? \Carbon\Carbon::parse($latestEpds->screening_date)->translatedFormat('d M Y') : 'Belum ada' }}
-            </div>
-            <div class="mt-3">
-                <a href="{{ route('skrining.epds') }}"
-                    class="inline-block text-xs px-3 py-1 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-700">Skrining EPDS</a>
-            </div>
-        </div>
-
-        {{-- DASS terakhir --}}
-        <div class="rounded-xl border border-rose-200 bg-rose-50 p-5">
-            <p class="text-rose-700 text-sm font-semibold mb-1">DASS-21 Terakhir</p>
-            <div class="text-gray-900 font-bold">
-                Dep {{ optional($latestDass)->total_depression ?? '—' }} •
-                Anx {{ optional($latestDass)->total_anxiety ?? '—' }} •
-                Str {{ optional($latestDass)->total_stress ?? '—' }}
-            </div>
-            <div class="text-sm text-gray-600 mt-1">
-                {{ $latestDass ? \Carbon\Carbon::parse($latestDass->screening_date)->translatedFormat('d M Y') : 'Belum ada' }}
-            </div>
-            <div class="mt-3">
-                <a href="{{ route('skrining.epds') }}"
-                    class="inline-block text-xs px-3 py-1 rounded-lg bg-rose-600 text-white hover:bg-rose-700">Skrining DASS-21</a>
-            </div>
-        </div>
-    </div>
-
-    {{-- Aksi Cepat --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
-        <a href="{{ route('skrining.epds') }}" class="rounded-xl border p-4 text-center hover:shadow-sm">
-            <div class="text-sm font-semibold">Mulai Skrining</div>
-            <div class="text-xs text-gray-500 mt-1">EPDS / DASS-21</div>
-        </a>
-        <a href="{{ route('riwayat.skrining') }}" class="rounded-xl border p-4 text-center hover:shadow-sm">
-            <div class="text-sm font-semibold">Riwayat</div>
-            <div class="text-xs text-gray-500 mt-1">Hasil & Unduh</div>
-        </a>
-        <a href="#" class="rounded-xl border p-4 text-center hover:shadow-sm">
-            <div class="text-sm font-semibold">Edukasi</div>
-            <div class="text-xs text-gray-500 mt-1">Materi & Tips</div>
-        </a>
-        <a href="{{ route('profile.edit') }}" class="rounded-xl border p-4 text-center hover:shadow-sm">
-            <div class="text-sm font-semibold">Profil</div>
-            <div class="text-xs text-gray-500 mt-1">Data Diri</div>
-        </a>
-    </div>
+    @endif
 
     {{-- ===== Konten per role ===== --}}
     @if($role === 'user')
@@ -244,31 +247,151 @@
         </div>
     </div>
     @elseif($role === 'admin_facility' || $role === 'superadmin')
-    <div class="bg-white rounded-xl shadow-sm p-5 mb-10">
-        <h3 class="text-lg font-semibold text-gray-900 mb-3">Ikhtisar Fasilitas</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="rounded-lg border p-4">
-                <div class="text-xs text-gray-500">EPDS (30d)</div>
-                <div class="text-2xl font-bold">{{ $kpi['epds_30d'] }}</div>
+        <section class="mb-10">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        Ikhtisar {{ $role === 'superadmin' ? 'Semua Fasilitas' : 'Fasilitas' }}
+                    </h3>
+                    <p class="text-xs text-gray-500">Periode 30 hari terakhir.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('riwayat.skrining') }}"
+                    class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50">
+                    Laporan Skrining
+                    </a>
+                </div>
             </div>
-            <div class="rounded-lg border p-4">
-                <div class="text-xs text-gray-500">DASS-21 (30d)</div>
-                <div class="text-2xl font-bold">{{ $kpi['dass_30d'] }}</div>
+
+            {{-- KPI Cards --}}
+            @php
+                $trimCounts = $facilityStats['trimester_counts'] ?? ['trimester_1'=>0,'trimester_2'=>0,'trimester_3'=>0,'pasca_hamil'=>0];
+                $totalIbu = $facilityStats['total_ibu'] ?? 0;
+
+                $items = $latestScreenings ?? [];
+                $epdsFlag = 0; $dassFlag = 0;
+
+                foreach ($items as $it) {
+                    if ($it['type'] === 'EPDS') {
+                        $t = (int)($it['scores']['total'] ?? 0);
+                        if ($t >= 13) $epdsFlag++;
+                    } else {
+                        $dep = (int)($it['scores']['dep'] ?? 0);
+                        $anx = (int)($it['scores']['anx'] ?? 0);
+                        $str = (int)($it['scores']['stress'] ?? 0);
+                        if ($dep >= 15 || $anx >= 12 || $str >= 20) $dassFlag++;
+                    }
+                }
+            @endphp
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="rounded-xl border p-4 bg-white">
+                    <div class="text-xs text-gray-500">Total Ibu Terdaftar</div>
+                    <div class="text-2xl font-bold">{{ number_format($totalIbu) }}</div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        T1 {{ $trimCounts['trimester_1'] ?? 0 }} •
+                        T2 {{ $trimCounts['trimester_2'] ?? 0 }} •
+                        T3 {{ $trimCounts['trimester_3'] ?? 0 }} •
+                        Pasca {{ $trimCounts['pasca_hamil'] ?? 0 }}
+                    </div>
+                </div>
+                <div class="rounded-xl border p-4 bg-white">
+                    <div class="text-xs text-gray-500">EPDS (30 hari)</div>
+                    <div class="text-2xl font-bold">{{ $kpi['epds_30d'] }}</div>
+                    <div class="text-xs text-gray-500 mt-1">Sesi unik</div>
+                </div>
+                <div class="rounded-xl border p-4 bg-white">
+                    <div class="text-xs text-gray-500">DASS-21 (30 hari)</div>
+                    <div class="text-2xl font-bold">{{ $kpi['dass_30d'] }}</div>
+                    <div class="text-xs text-gray-500 mt-1">Sesi unik</div>
+                </div>
+                <div class="rounded-xl border p-4 bg-white">
+                    <div class="text-xs text-gray-500">Flagged (tinggi risiko)</div>
+                    <div class="text-2xl font-bold">{{ $epdsFlag + $dassFlag }}</div>
+                    <div class="text-xs text-gray-500 mt-1">EPDS {{ $epdsFlag }} • DASS {{ $dassFlag }}</div>
+                </div>
             </div>
-            <div class="rounded-lg border p-4">
-                <div class="text-xs text-gray-500">EPDS (user ini)</div>
-                <div class="text-2xl font-bold">{{ $epdsCount }}</div>
+
+            {{-- Charts + Activity --}}
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+                {{-- Trend 30 hari --}}
+                <div class="lg:col-span-2 rounded-xl border bg-white p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-gray-900">Tren Skrining (30 hari)</h4>
+                        <div class="text-xs text-gray-500">EPDS vs DASS-21</div>
+                    </div>
+                    <div id="chart-trend" class="w-full" style="height:320px"></div>
+                </div>
+
+                {{-- Distribusi Trimester --}}
+                <div class="lg:col-span-2 rounded-xl border bg-white p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-gray-900">Distribusi Trimester</h4>
+                        <div class="text-xs text-gray-500">Terbaru per ibu</div>
+                    </div>
+                    <div id="chart-trimester" class="w-full" style="height:320px"></div>
+                </div>
+
+                {{-- Flagged by Type --}}
+                <div class="lg:col-span-2 rounded-xl border bg-white p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-gray-900">Flagged by Type</h4>
+                        <div class="text-xs text-gray-500">Ambang: EPDS ≥ 13 • DASS dep ≥ 15 / anx ≥ 12 / str ≥ 20</div>
+                    </div>
+                    <div id="chart-flagged" class="w-full" style="height:280px"></div>
+                </div>
+
+                {{-- Aktivitas Terbaru --}}
+                <div class="lg:col-span-2 rounded-xl border bg-white p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-gray-900">Aktivitas Terbaru</h4>
+                        <a href="{{ route('riwayat.skrining') }}" class="text-sm text-teal-700 hover:underline">Lihat semua</a>
+                    </div>
+                    @if(!empty($latestScreenings))
+                        <ul class="divide-y">
+                            @foreach($latestScreenings as $it)
+                                @php
+                                    $isEPDS = $it['type'] === 'EPDS';
+                                    $badge = $isEPDS
+                                        ? ((int)($it['scores']['total'] ?? 0) >= 13 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700')
+                                        : (
+                                            ((int)($it['scores']['dep'] ?? 0) >= 15 || (int)($it['scores']['anx'] ?? 0) >= 12 || (int)($it['scores']['stress'] ?? 0) >= 20)
+                                            ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                                        );
+                                @endphp
+                                <li class="py-3 flex items-start gap-3">
+                                    <div class="h-9 w-9 grid place-content-center rounded-full bg-gray-100 text-xs font-semibold">
+                                        {{ $isEPDS ? 'EP' : 'DA' }}
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <div class="font-medium text-gray-900">{{ $it['ibu'] ?? 'Ibu' }}</div>
+                                            <div class="text-xs text-gray-500">{{ $it['label'] }}</div>
+                                        </div>
+                                        <div class="mt-0.5 text-sm text-gray-700">
+                                            @if($isEPDS)
+                                                Skor EPDS: <span class="font-semibold">{{ (int)($it['scores']['total'] ?? 0) }}</span>
+                                            @else
+                                                Dep <span class="font-semibold">{{ (int)($it['scores']['dep'] ?? 0) }}</span> •
+                                                Anx <span class="font-semibold">{{ (int)($it['scores']['anx'] ?? 0) }}</span> •
+                                                Str <span class="font-semibold">{{ (int)($it['scores']['stress'] ?? 0) }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] {{ $badge }}">
+                                        {{ $isEPDS
+                                            ? ((int)($it['scores']['total'] ?? 0) >= 13 ? 'Perlu perhatian' : 'Wajar')
+                                            : (((int)($it['scores']['dep'] ?? 0) >= 15 || (int)($it['scores']['anx'] ?? 0) >= 12 || (int)($it['scores']['stress'] ?? 0) >= 20) ? 'Perlu perhatian' : 'Wajar') }}
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div class="text-sm text-gray-500">Belum ada aktivitas.</div>
+                    @endif
+                </div>
             </div>
-            <div class="rounded-lg border p-4">
-                <div class="text-xs text-gray-500">DASS (user ini)</div>
-                <div class="text-2xl font-bold">{{ $dassCount }}</div>
-            </div>
-        </div>
-        <div class="mt-4 flex gap-3">
-            <a href="{{ route('riwayat.skrining') }}"
-                class="px-4 py-2 rounded-lg bg-gray-100 text-gray-900 text-sm hover:bg-gray-200">Laporan Skrining</a>
-        </div>
-    </div>
+        </section>
     @endif
 
     <style>
@@ -283,6 +406,7 @@
     </style>
 
     <!-- CTA Mobile -->
+    @if (Auth::user()->role_id == 1)
     <div class="md:hidden sticky bottom-4 inset-x-0 px-4">
         <a href="{{ route('skrining.epds') }}"
             class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-teal-600 text-white shadow-lg">
@@ -292,29 +416,35 @@
             Mulai Skrining
         </a>
     </div>
+    @endif 
 
     {{-- ====== SEED JSON untuk komponen client (dibaca di app.js) ====== --}}
     <x-slot name="scripts">
+        <script data-swup-reload-script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
         <script data-swup-reload-script type="application/json" id="dashboard-seed">
-                {!! json_encode([
+            {!! json_encode([
                 'kpi' => $kpi,
                 'alerts' => $alerts,
                 'latest' => [
-                'epds' => $latestEpds ? [
-                    'score' => (int)($latestEpds->total_score ?? 0),
-                    'date'  => \Carbon\Carbon::parse($latestEpds->screening_date)->toDateString(),
-                ] : null,
-                'dass' => $latestDass ? [
-                    'dep'  => (int)($latestDass->total_depression ?? 0),
-                    'anx'  => (int)($latestDass->total_anxiety ?? 0),
-                    'str'  => (int)($latestDass->total_stress ?? 0),
-                    'date' => \Carbon\Carbon::parse($latestDass->screening_date)->toDateString(),
-                ] : null,
+                    'epds' => $latestEpds ? [
+                        'score' => (int)($latestEpds->total_score ?? 0),
+                        'date'  => \Carbon\Carbon::parse($latestEpds->screening_date)->toDateString(),
+                    ] : null,
+                    'dass' => $latestDass ? [
+                        'dep'  => (int)($latestDass->total_depression ?? 0),
+                        'anx'  => (int)($latestDass->total_anxiety ?? 0),
+                        'str'  => (int)($latestDass->total_stress ?? 0),
+                        'date' => \Carbon\Carbon::parse($latestDass->screening_date)->toDateString(),
+                    ] : null,
                 ],
                 'nextSchedule' => $nextSchedule,
-                // Jika kamu punya grafik, controller sudah menyiapkan:
                 'epdsTrend' => $epdsTrend ?? [],
                 'dassTrend' => $dassTrend ?? [],
+
+                // === Tambahan untuk Admin/Superadmin ===
+                'facilityStats' => $facilityStats ?? null,
+                'latestScreenings' => $latestScreenings ?? [],
+                'role' => $role,
             ], JSON_UNESCAPED_UNICODE) !!}
         </script>
 
@@ -410,6 +540,132 @@
                 window.addEventListener('resize', () => requestAnimationFrame(updateUI));
                 // init
                 updateUI();
+            })();
+        </script>
+
+        <script data-swup-reload-script>
+            (function () {
+                const seedEl = document.getElementById('dashboard-seed');
+                if (!seedEl) return;
+
+                const seed = JSON.parse(seedEl.textContent || '{}');
+                if (seed.role !== 'admin_facility' && seed.role !== 'superadmin') return;
+
+                const stats = seed.facilityStats || { trimester_counts: {trimester_1:0,trimester_2:0,trimester_3:0,pasca_hamil:0} };
+                const latest = Array.isArray(seed.latestScreenings) ? seed.latestScreenings : [];
+
+                // ===== Helper: list tanggal 30 hari =====
+                function lastNDays(n) {
+                    const days = [];
+                    const now = new Date();
+                    for (let i = n - 1; i >= 0; i--) {
+                        const d = new Date(now);
+                        d.setDate(d.getDate() - i);
+                        days.push(d.toISOString().slice(0, 10));
+                    }
+                    return days;
+                }
+
+                // ===== Aggregate: hitung per hari (EPDS vs DASS) dari latestScreenings =====
+                const days = lastNDays(30);
+                const countByDay = Object.fromEntries(days.map(d => [d, {EPDS:0, DASS:0}]));
+                latest.forEach(it => {
+                    const day = it.date;
+                    if (!countByDay[day]) return;
+                    if (it.type === 'EPDS') countByDay[day].EPDS += 1;
+                    else countByDay[day].DASS += 1;
+                });
+                const epdsSeries = days.map(d => countByDay[d].EPDS);
+                const dassSeries = days.map(d => countByDay[d].DASS);
+
+                // ===== Chart: Tren 30 Hari =====
+                const trendEl = document.querySelector('#chart-trend');
+                if (trendEl && window.ApexCharts) {
+                    const trendChart = new ApexCharts(trendEl, {
+                        chart: { type: 'area', height: 320, toolbar: { show: false } },
+                        stroke: { curve: 'smooth', width: 2 },
+                        dataLabels: { enabled: false },
+                        grid: { borderColor: '#eee' },
+                        series: [
+                            { name: 'EPDS', data: epdsSeries },
+                            { name: 'DASS-21', data: dassSeries }
+                        ],
+                        xaxis: {
+                            categories: days,
+                            labels: { rotate: -45, datetimeUTC: false }
+                        },
+                        yaxis: { min: 0, forceNiceScale: true },
+                        tooltip: { shared: true }
+                    });
+                    trendChart.render();
+                }
+
+                // ===== Chart: Donut Trimester =====
+                const tri = stats.trimester_counts || {};
+                const triSeries = [
+                    tri.trimester_1 || 0,
+                    tri.trimester_2 || 0,
+                    tri.trimester_3 || 0,
+                    tri.pasca_hamil || 0
+                ];
+                const triEl = document.querySelector('#chart-trimester');
+                if (triEl && window.ApexCharts) {
+                    const triChart = new ApexCharts(triEl, {
+                        chart: { type: 'donut', height: 320 },
+                        labels: ['Trimester I', 'Trimester II', 'Trimester III', 'Pasca Hamil'],
+                        series: triSeries,
+                        legend: { position: 'bottom' },
+                        dataLabels: { enabled: true },
+                        plotOptions: {
+                            pie: {
+                                donut: {
+                                    size: '70%',
+                                    labels: {
+                                        show: true,
+                                        total: {
+                                            show: true,
+                                            label: 'Total Ibu',
+                                            formatter: () => {
+                                                const sum = triSeries.reduce((a,b)=>a+b,0);
+                                                return String(sum);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    triChart.render();
+                }
+
+                // ===== Chart: Flagged by Type (bar) =====
+                let epdsFlag = 0, dassFlag = 0;
+                latest.forEach(it => {
+                    if (it.type === 'EPDS') {
+                        const t = Number(it?.scores?.total || 0);
+                        if (t >= 13) epdsFlag++;
+                    } else {
+                        const dep = Number(it?.scores?.dep || 0);
+                        const anx = Number(it?.scores?.anx || 0);
+                        const str = Number(it?.scores?.stress || 0);
+                        if (dep >= 15 || anx >= 12 || str >= 20) dassFlag++;
+                    }
+                });
+
+                const flaggedEl = document.querySelector('#chart-flagged');
+                if (flaggedEl && window.ApexCharts) {
+                    const flaggedChart = new ApexCharts(flaggedEl, {
+                        chart: { type: 'bar', height: 280, toolbar: { show:false } },
+                        plotOptions: { bar: { borderRadius: 6, columnWidth: '40%' } },
+                        dataLabels: { enabled: false },
+                        xaxis: { categories: ['EPDS', 'DASS-21'] },
+                        series: [{ name: 'Flagged', data: [epdsFlag, dassFlag] }]
+                    });
+                    flaggedChart.render();
+                }
+                document.addEventListener('visit:start', () => { try { swup.cache.clear() } catch {} });
+                document.addEventListener('turbo:visit', () => { try { swup.cache.clear(); } catch {} });
+                document.addEventListener('swup:transitionStart', () => { try { swup.cache.clear(); } catch {} })
             })();
         </script>
     </x-slot>

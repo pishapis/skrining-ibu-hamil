@@ -73,7 +73,7 @@ if (window.__swup) { try { window.__swup.destroy() } catch {} window.__swup = nu
 const INTERNAL = (sel) =>
   `${sel}:not([target]):not([download]):not([data-no-swup]):not([rel="external"])`
 
-const swup = new Swup({
+window.swup = new Swup({
   animateHistoryBrowsing: true, // animasi juga saat back/forward
   containers: ['#app-frame'],
   plugins: [
@@ -147,11 +147,8 @@ function readSeed(id = 'dashboard-seed') {
 function hydrateDashboard() {
   const seed = readSeed();
   if (!seed) return;
-  if (typeof window.renderEpdsChart === 'function' && document.getElementById('epds-chart')) {
-    try { window.renderEpdsChart(seed.epdsTrend || []); } catch {}
-  }
-  if (typeof window.renderDassChart === 'function' && document.getElementById('dass-chart')) {
-    try { window.renderDassChart(seed.dassTrend || []); } catch {}
+  if (typeof window.initAll === 'function') {
+    try { window.initAll(seed.epdsTrend || []); } catch {}
   }
 }
 
@@ -162,6 +159,8 @@ swup.hooks.on('page:view', () => {
 });
 
 // swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} })
+// swup.hooks.on('turbo:visit', () => { try { swup.cache.clear(); } catch {} })
+// swup.hooks.on('turbo:visit', () => { try { swup.cache.clear(); } catch {} })
 swup.hooks.on('visit:start',  progressStart) // klik/link/submit dimulai
 swup.hooks.on('page:view',    progressEnd)   // halaman baru siap terlihat
 swup.hooks.on('visit:end',    progressEnd)   // fallback selesai

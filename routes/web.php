@@ -54,10 +54,6 @@ Route::middleware(['auth', 'verified', 'is_user'])->group(function () {
         Route::post('/dass/cancel', [SkriningController::class, 'cancelDass'])->name('dass.cancel');
         Route::post('first-create-usia-hamil', 'first_create_usia_hamil')->name('first.create.usia.hamil');
     });
-
-    Route::controller(RiwayatSkriningController::class)->group(function () {
-        Route::get('riwayat-skrining', 'index')->name('riwayat.skrining');
-    });
 });
 
 Route::controller(FilterAlamatController::class)->group(function () {
@@ -74,6 +70,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/edukasi',               [EducationContentController::class,'index'])->name('edukasi.index');
     Route::get('/edukasi/{slug}',        [EducationContentController::class,'show'])->name('edukasi.show');
+
+    Route::controller(RiwayatSkriningController::class)->group(function () {
+        Route::get('riwayat-skrining', 'index')->name('riwayat.skrining');
+    });
 });
 
 Route::get('/erlog', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index');
