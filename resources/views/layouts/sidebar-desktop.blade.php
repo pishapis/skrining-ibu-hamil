@@ -50,6 +50,13 @@
             </a>
         </div>
 
+        <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600">
+            <a href="{{ route('edukasi.create') }}" class="w-full flex items-center">
+                <i class="fa-solid fa-share mr-3"></i>
+                Post Edukasi
+            </a>
+        </div>
+
         <!-- Manajemen Pengguna (Superadmin) -->
         <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600" x-data="{ openDropdown: false }">
             <button @click="openDropdown = !openDropdown" class="w-full text-left flex items-center">
@@ -110,8 +117,8 @@
                 Skrining
             </a>
         </div>
-        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600'])>
-            <a href="#">
+        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('edukasi.index') ? 'bg-blue-100 text-blue-800' : ''])>
+            <a href="{{ url('/edukasi') }}">
                 <svg class="inline-block mr-2 w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM6 10a4 4 0 118 0 4 4 0 01-8 0z" />
                 </svg>

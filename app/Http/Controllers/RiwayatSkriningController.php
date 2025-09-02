@@ -24,7 +24,7 @@ class RiwayatSkriningController extends Controller
             ->whereNotNull('hpht')->whereNotNull('hpl')
             ->latest('created_at')->first();
 
-        $usia_hamil = null;
+        $usia_hamil = [];
         if ($riwayat) {
             $usiaMinggu = hitungUsiaKehamilanMinggu($riwayat->hpht);
             $usia_hamil = [
@@ -69,7 +69,7 @@ class RiwayatSkriningController extends Controller
         $hasil_dass = $dass_raw->toBase()->values();
 
         // ---- Map ke 1 array "items" untuk dipakai Alpine di Blade
-        $epdsItems = $hasil_epds->map(function ($r) {
+        $epdsItems = $hasil_epds->map(function ($r) use ($usia_hamil) {
             $dt = Carbon::parse($r->screening_date);
             return [
                 'id'         => $r->id,
@@ -79,10 +79,11 @@ class RiwayatSkriningController extends Controller
                 'year'       => $dt->year,
                 'trimester'  => $r->trimester,
                 'scores'     => ['epds_total' => (int) ($r->total_score ?? 0)],
+                'usia_hamil' => $usia_hamil,
             ];
         });
 
-        $dassItems = $hasil_dass->map(function ($r) {
+        $dassItems = $hasil_dass->map(function ($r) use ($usia_hamil) {
             $dt = \Carbon\Carbon::parse($r->screening_date);
             return [
                 'id'         => $r->id,
@@ -96,6 +97,7 @@ class RiwayatSkriningController extends Controller
                     'anx'    => (int) ($r->total_anxiety   ?? 0),
                     'stress' => (int) ($r->total_stress    ?? 0),
                 ],
+                'usia_hamil' => $usia_hamil,
             ];
         });
 

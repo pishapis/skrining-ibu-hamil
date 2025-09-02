@@ -25,18 +25,33 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
+
     public function edit(Request $request): View
     {
         $id = Auth::user()->id;
-        $data_diri = DataDiri::where('user_id', $id)->first();
-        $puskesmas = Puskesmas::where('kode_kec', $data_diri->kode_kec)->get();
-        $provinsis = Provinsi::all();
-        $kota = Kota::where('province_code', $data_diri->kode_prov)->get();
-        $kec = Kecamatan::where('city_code', $data_diri->kode_kab)->get();
-        $desa = Kelurahan::where('district_code', $data_diri->kode_kec)->get();
-        $rujukan = FasilitasKesehatan::where('kode_kota', $data_diri->kode_kab)->get();
+        $role = Auth::user()->role_id;
 
-        // dd($kota);
+        $data_diri = null;
+        $puskesmas = null;
+        $provinsis = null;
+        $kota = null;
+        $kec = null;
+        $desa = null;
+        $rujukan = null;
+
+        if ($role != 3) {
+            $data_diri = DataDiri::where('user_id', $id)->first();
+            if ($data_diri) {
+                $puskesmas = Puskesmas::where('kode_kec', $data_diri->kode_kec)->get();
+                $kota = Kota::where('province_code', $data_diri->kode_prov)->get();
+                $kec = Kecamatan::where('city_code', $data_diri->kode_kab)->get();
+                $desa = Kelurahan::where('district_code', $data_diri->kode_kec)->get();
+                $rujukan = FasilitasKesehatan::where('kode_kota', $data_diri->kode_kab)->get();
+            }
+        }
+
+        $provinsis = Provinsi::all();
+
         return view('profile.edit', [
             'user' => $request->user(),
             'data_diri' => $data_diri,

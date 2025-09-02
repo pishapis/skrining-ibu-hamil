@@ -46,7 +46,10 @@
 
                 <div id="swup">
                     {{ $slot }}
-                    @include('layouts.navigation-mobile')
+
+                    @if (Auth::user()->role_id === 1)
+                        @include('layouts.navigation-mobile')
+                    @endif
                 </div>
             </main>
         </div>
