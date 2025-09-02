@@ -16,7 +16,8 @@
             </svg>
             Skrining
         </a>
-        <a href="#" class="flex flex-col items-center text-xs text-gray-400">
+        <a href="{{ url('/edukasi') }}" 
+            @class(['flex flex-col items-center text-xs', request()->routeIs('edukasi.index') ? 'text-[#63b3ed]' : 'text-gray-400'])>
             <svg class="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM6 10a4 4 0 118 0 4 4 0 01-8 0z" />
             </svg>

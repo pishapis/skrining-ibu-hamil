@@ -137,7 +137,31 @@ const progressEnd = () => {
   setTimeout(() => { bar.style.opacity = '0' }, 200)
 }
 
-swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} })
+function readSeed(id = 'dashboard-seed') {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  try { return JSON.parse(el.textContent || '{}'); }
+  catch { return null; }
+}
+
+function hydrateDashboard() {
+  const seed = readSeed();
+  if (!seed) return;
+  if (typeof window.renderEpdsChart === 'function' && document.getElementById('epds-chart')) {
+    try { window.renderEpdsChart(seed.epdsTrend || []); } catch {}
+  }
+  if (typeof window.renderDassChart === 'function' && document.getElementById('dass-chart')) {
+    try { window.renderDassChart(seed.dassTrend || []); } catch {}
+  }
+}
+
+hydrateDashboard();
+
+swup.hooks.on('page:view', () => {
+  hydrateDashboard();
+});
+
+// swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} })
 swup.hooks.on('visit:start',  progressStart) // klik/link/submit dimulai
 swup.hooks.on('page:view',    progressEnd)   // halaman baru siap terlihat
 swup.hooks.on('visit:end',    progressEnd)   // fallback selesai

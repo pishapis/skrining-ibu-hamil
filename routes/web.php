@@ -6,6 +6,7 @@ use App\Http\Controllers\RiwayatSkriningController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Filter\FilterAlamatController;
 use App\Http\Controllers\Master\PenggunaController;
+use App\Http\Controllers\Master\EducationContentController;
 use App\Http\Controllers\Admin\RescreenTokenController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,13 +22,18 @@ Route::middleware(['auth', 'verified', 'is_superadmin'])->group(function () {
         Route::get('manajemen-pengguna', 'index')->name('manajemen.pengguna');
     });
 
+    Route::get( '/edukasi/create',     [EducationContentController::class,'create'])->name('edukasi.create');
+    Route::post('/edukasi',            [EducationContentController::class,'store'])->name('edukasi.store');
+    Route::get( '/edukasi/{slug}/edit', [EducationContentController::class,'edit'])->name('edukasi.edit');
+    Route::put( '/edukasi/{slug}',      [EducationContentController::class,'update'])->name('edukasi.update');
+    Route::delete('/edukasi/{slug}',    [EducationContentController::class,'destroy'])->name('edukasi.destroy');
 });
 
 Route::middleware(['auth', 'verified', 'is_admin'])->group(function () {
     //
 });
 
-Route::middleware(['auth','can:manage-rescreen-tokens'])->prefix('admin/rescreens')->name('admin.rescreens.')->group(function () {
+Route::middleware(['auth', 'can:manage-rescreen-tokens'])->prefix('admin/rescreens')->name('admin.rescreens.')->group(function () {
     Route::get('/', [RescreenTokenController::class, 'index'])->name('index');
     Route::post('/', [RescreenTokenController::class, 'store'])->name('store');
     Route::patch('/{rescreen}/revoke', [RescreenTokenController::class, 'revoke'])->name('revoke');
@@ -38,14 +44,14 @@ Route::middleware(['auth', 'verified', 'is_user'])->group(function () {
     Route::controller(SkriningController::class)->group(function () {
         Route::get('skrining', 'index')->name('skrining.epds');
         Route::post('/epds/cancel', [SkriningController::class, 'cancelEpds'])->name('epds.cancel');
-        Route::get('/epds/start', [SkriningController::class,'startEpds'])->name('epds.start');
-        Route::post('/epds/save',  [SkriningController::class,'saveEpdsAnswer'])->name('epds.save');
-        Route::post('/epds/submit',[SkriningController::class,'submitEpds'])->name('epds.submit');
+        Route::get('/epds/start', [SkriningController::class, 'startEpds'])->name('epds.start');
+        Route::post('/epds/save',  [SkriningController::class, 'saveEpdsAnswer'])->name('epds.save');
+        Route::post('/epds/submit', [SkriningController::class, 'submitEpds'])->name('epds.submit');
 
-        Route::get ('/dass/start',  [SkriningController::class,'startDass'])->name('dass.start');
-        Route::post('/dass/answer', [SkriningController::class,'saveDassAnswer'])->name('dass.save');
-        Route::post('/dass/submit', [SkriningController::class,'submitDass'])->name('dass.submit');
-        Route::post('/dass/cancel', [SkriningController::class,'cancelDass'])->name('dass.cancel');
+        Route::get('/dass/start',  [SkriningController::class, 'startDass'])->name('dass.start');
+        Route::post('/dass/answer', [SkriningController::class, 'saveDassAnswer'])->name('dass.save');
+        Route::post('/dass/submit', [SkriningController::class, 'submitDass'])->name('dass.submit');
+        Route::post('/dass/cancel', [SkriningController::class, 'cancelDass'])->name('dass.cancel');
         Route::post('first-create-usia-hamil', 'first_create_usia_hamil')->name('first.create.usia.hamil');
     });
 
@@ -65,6 +71,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/edukasi',               [EducationContentController::class,'index'])->name('edukasi.index');
+    Route::get('/edukasi/{slug}',        [EducationContentController::class,'show'])->name('edukasi.show');
 });
 
 Route::get('/erlog', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index');

@@ -5,7 +5,7 @@
     <x-header-back>Riwayat</x-header-back>
 
     {{-- ROOT: data items dikirim lewat data-attribute agar bisa diambil JS --}}
-    <div id="riwayat-root" class="max-w-7xl mx-auto p-4 sm:p-6" data-items='@json($items)'>
+    <div id="riwayat-root" class="max-w-7xl mx-auto p-4 sm:p-6" data-usia='@json($usia_hamil)' data-items='@json($items)'>
 
         {{-- Header + Filter --}}
         <div class="bg-white rounded-2xl shadow p-4 sm:p-5 mb-4 sm:mb-6">
@@ -58,6 +58,7 @@
                     <thead class="bg-gray-50 text-gray-600">
                         <tr>
                             <th class="px-4 py-3 text-left">Tanggal</th>
+                            <th class="px-4 py-3 text-left">Usia Kehamilahn</th>
                             <th class="px-4 py-3 text-left">Jenis</th>
                             <th class="px-4 py-3 text-left">Tahap</th>
                             <th class="px-4 py-3 text-left">Skor / Ringkasan</th>
@@ -100,12 +101,15 @@
 
                 // Ambil data dari attribute
                 let raw = [];
+                let usia = []
                 try {
                     raw = JSON.parse(root.dataset.items || '[]') || [];
+                    usia = JSON.parse(root.dataset.usia || '[]') || [];
                 } catch {}
 
                 const state = {
                     raw,
+                    usia,
                     filters: {
                         year: '',
                         term: '',
@@ -220,7 +224,7 @@
 
                         const body = el('div', 'text-sm text-gray-700');
                         const tri = el('span', 'text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-medium');
-                        tri.textContent = TRIMESTER_LABELS[row.trimester] ?? '—';
+                        tri.textContent = TRIMESTER_LABELS[row.trimester] + " | " + row.usia_hamil?.keterangan ?? '—';
                         body.appendChild(tri);
 
                         if (row.type === 'EPDS') {
@@ -263,7 +267,7 @@
                     [...tbody.querySelectorAll('tr')].forEach(tr => {
                         if (tr.id !== 'desktop-empty') tr.remove();
                     });
-
+                    
                     if (!list.length) {
                         desktopEmpty.classList.remove('hidden');
                         return;
@@ -272,6 +276,11 @@
 
                     list.forEach(row => {
                         const tr = el('tr', 'hover:bg-gray-50');
+
+                        const tdUsia = el('td', 'px-4 py-3 capitalize');
+                        const us = el('span', 'text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-medium');
+                        us.textContent = row.usia_hamil?.keterangan || '—';
+                        tdUsia.appendChild(us);
 
                         const tdDate = el('td', 'px-4 py-3');
                         tdDate.textContent = row.date_human || '—';
@@ -316,7 +325,7 @@
                             tdSum.appendChild(wrap);
                         }
 
-                        tr.append(tdDate, tdType, tdTerm, tdSum);
+                        tr.append(tdDate, tdUsia, tdType, tdTerm, tdSum);
                         tbody.appendChild(tr);
                     });
                 }
