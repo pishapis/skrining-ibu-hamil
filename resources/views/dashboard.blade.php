@@ -413,7 +413,7 @@
                 <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
                 </svg>
-                Mulai Skrining
+                Mulai Skrining 
             </a>
         </div>
         @endif
@@ -452,7 +452,7 @@
                 (function() {
                     const scroller = document.getElementById('edu-scroller');
                     if (!scroller) return;
-
+                    const oke = null;
                     const cards = Array.from(scroller.querySelectorAll('a'));
                     const dotsWrap = document.getElementById('edu-dots');
                     const btns = document.querySelectorAll('.edu-nav');
