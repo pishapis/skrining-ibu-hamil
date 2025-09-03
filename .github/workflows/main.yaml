@@ -42,7 +42,7 @@ jobs:
       - name: Deploy to VPS via SSH 
         run: |
           ssh -t -o StrictHostKeyChecking=no ubuntu@${{ secrets.VPS_HOSTINGER_IP }} << 'EOF'
-              cd /var/www/html/agripreneur-sugarcane || exit
+              cd /var/www/test/skrining-ibu-hamil || exit
               git stash || exit  # Menyimpan perubahan lokal jika ada
               git pull origin main || exit
               composer install --no-dev --optimize-autoloader || exit
