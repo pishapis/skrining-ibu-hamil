@@ -41,8 +41,8 @@
             </div>
         </div>
 
-        <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600">
-            <a href="#" class="w-full flex items-center">
+        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('riwayat.skrining') ? 'bg-blue-100 text-blue-800' : ''])>
+            <a href="{{ url('/riwayat-skrining') }}" class="w-full flex items-center">
                 <svg class="inline-block mr-2 w-5 h-5 mb-0.5" xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                     stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Riwayat">
@@ -55,7 +55,7 @@
             </a>
         </div>
 
-        <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600">
+        <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('edukasi.create') ? 'bg-blue-100 text-blue-800' : ''])>
             <a href="{{ route('edukasi.create') }}" class="w-full flex items-center">
                 <i class="fa-solid fa-share mr-3"></i>
                 Post Edukasi
