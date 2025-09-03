@@ -403,7 +403,7 @@
                 -ms-overflow-style: none;
                 scrollbar-width: none;
             }
-        </style>
+        </style> 
 
         <!-- CTA Mobile -->
         @if (Auth::user()->role_id == 1)
