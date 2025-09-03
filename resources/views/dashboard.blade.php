@@ -18,7 +18,6 @@
             <div class="md:hidden">
                 <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Halo, {{ $displayName }} 👋</h2>
                 <p class="text-gray-600 mt-1">Selamat datang di Aplikasi Skrining Kesehatan Mental Ibu Hamil.</p>
-                </divc>
                 @if (Auth::user()->role_id == 1)
                 <div class="hidden md:block">
                     <a href="{{ route('skrining.epds') }}"
