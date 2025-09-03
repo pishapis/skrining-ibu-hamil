@@ -29,7 +29,7 @@
     <div id="swup-progress" aria-hidden="true"></div>
     <div id="app-frame" data-swup-container>
         <div class="min-h-screen flex items-center justify-center p-4">
-            <div id="swup" class="transition-slide w-full max-w-sm md:max-w-md">
+            <div id="swup" class="w-full max-w-sm md:max-w-md">
                 {{ $slot }}
             </div>
         </div>

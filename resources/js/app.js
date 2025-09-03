@@ -65,6 +65,7 @@ import ScrollPlugin from '@swup/scroll-plugin'
 import HeadPlugin from '@swup/head-plugin'
 import PreloadPlugin from '@swup/preload-plugin'
 import ScriptsPlugin from '@swup/scripts-plugin'
+import "https://cdn.jsdelivr.net/npm/apexcharts"
 
 const ORIGIN = window.location.origin
 
@@ -159,9 +160,7 @@ swup.hooks.on('page:view', () => {
 });
 
 // swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} })
-// swup.hooks.on('turbo:visit', () => { try { swup.cache.clear(); } catch {} })
-// swup.hooks.on('turbo:visit', () => { try { swup.cache.clear(); } catch {} })
 swup.hooks.on('visit:start',  progressStart) // klik/link/submit dimulai
 swup.hooks.on('page:view',    progressEnd)   // halaman baru siap terlihat
 swup.hooks.on('visit:end',    progressEnd)   // fallback selesai
-
+ 
