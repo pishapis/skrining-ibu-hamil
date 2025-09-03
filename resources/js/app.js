@@ -156,18 +156,7 @@ function hydrateDashboard() {
 }
 hydrateDashboard();
 
-function toggleFullscreenLayout() {
-    if (window.innerWidth <= 768) {
-        document.body.classList.add("fullscreen");
-    } else {
-        document.body.classList.remove("fullscreen");
-    }
-}
-toggleFullscreenLayout();
-window.addEventListener("resize", toggleFullscreenLayout);
-
 swup.hooks.on('page:view', () => {hydrateDashboard();});
-swup.hooks.on('page:view', () => {toggleFullscreenLayout();});
 
 // swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} })
 swup.hooks.on('visit:start',  progressStart) // klik/link/submit dimulai

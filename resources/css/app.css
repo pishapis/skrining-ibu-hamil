@@ -2,12 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .fullscreen {
-    @apply w-screen h-screen overflow-hidden;
-  }
-}
-
 html {
     font-family: sans-serif;
     line-height: 1.15;
