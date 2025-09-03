@@ -65,7 +65,9 @@ import ScrollPlugin from '@swup/scroll-plugin'
 import HeadPlugin from '@swup/head-plugin'
 import PreloadPlugin from '@swup/preload-plugin'
 import ScriptsPlugin from '@swup/scripts-plugin'
-import "https://cdn.jsdelivr.net/npm/apexcharts"
+import ApexCharts from 'apexcharts';
+
+window.ApexCharts = ApexCharts;
 
 const ORIGIN = window.location.origin
 
