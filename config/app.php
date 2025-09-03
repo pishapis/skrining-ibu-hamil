@@ -123,4 +123,7 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'android_package_name' => env('ANDROID_PACKAGE_NAME', 'com.skriningibuhamil.app'),
+    'android_cert_fingerprints' => explode(',', env('ANDROID_CERT_FINGERPRINTS', '')),
+
 ];

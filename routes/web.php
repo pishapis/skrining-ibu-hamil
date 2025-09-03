@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\RescreenTokenController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
+Route::view('/offline','offline')->name('offline');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
