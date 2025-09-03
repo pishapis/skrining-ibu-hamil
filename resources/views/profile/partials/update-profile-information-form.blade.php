@@ -239,7 +239,7 @@
                                 </option>
                             @endforeach
                         </select>
-                    </div>
+                    </div> 
                     <div class="md:col-span-2">
                         <label class="block text-gray-700 text-sm font-medium mb-2">Alamat Rumah</label>
                         <textarea name="alamat_rumah" class="input-field" oninput="oninputKeterangan(this, event)" rows="2" x-bind:required="step===1">{{ $data_diri->alamat_rumah }}</textarea>
@@ -304,41 +304,4 @@
 
         </form>
     </div>
-
-    <!-- <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
-        @csrf
-        @method('patch')
-
-        <section x-show="step===0" x-ref="s0" x-cloak>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Username</label>
-                    <input name="username" type="text" class="input-field" x-bind:required="step===0"
-                        value="{{ old('username') }}" autocomplete="username">
-                    <x-input-error :messages="$errors->get('username')" class="mt-2" />
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
-                    <input name="email" type="email" class="input-field" x-bind:required="step===0"
-                        value="{{ old('email') }}" autocomplete="email">
-                    <x-input-error :messages="$errors->get('email')" class="mt-2" />
-                </div>
-            </div>
-        </section>
-
-        <div class="flex items-center gap-4">
-            <button type="submit" class="btn-primary w-full sm:w-auto">
-                Simpan
-            </button>
-
-            @if (session('status') === 'profile-updated')
-            <p
-                x-data="{ show: true }"
-                x-show="show"
-                x-transition
-                x-init="setTimeout(() => show = false, 2000)"
-                class="text-sm text-gray-600">{{ __('Saved.') }}</p>
-            @endif
-        </div>
-    </form> -->
 </section>

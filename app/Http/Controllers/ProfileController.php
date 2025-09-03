@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 use App\Models\DataDiri;
 use App\Models\FasilitasKesehatan;
+use App\Models\Puskesmas;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Kota;
-use App\Models\Puskesmas;
 use App\Models\Provinsi;
 use App\Models\User;
 use Illuminate\Validation\Rule;
@@ -43,10 +43,10 @@ class ProfileController extends Controller
             $data_diri = DataDiri::where('user_id', $id)->first();
             if ($data_diri) {
                 $puskesmas = Puskesmas::where('kode_kec', $data_diri->kode_kec)->get();
+                $rujukan = FasilitasKesehatan::where('kode_kota', $data_diri->kode_kab)->get();
                 $kota = Kota::where('province_code', $data_diri->kode_prov)->get();
                 $kec = Kecamatan::where('city_code', $data_diri->kode_kab)->get();
                 $desa = Kelurahan::where('district_code', $data_diri->kode_kec)->get();
-                $rujukan = FasilitasKesehatan::where('kode_kota', $data_diri->kode_kab)->get();
             }
         }
 
