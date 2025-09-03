@@ -21,6 +21,8 @@ Route::middleware(['auth', 'verified', 'is_superadmin'])->group(function () {
 
     Route::controller(PenggunaController::class)->group(function () {
         Route::get('manajemen-pengguna', 'index')->name('manajemen.pengguna');
+        Route::get('pengguna-update-bu', 'updateIbu')->name('pengguna.ibu.update');
+        Route::get('pengguna-update-puskesmas', 'updatePuskesmas')->name('pengguna.puskesmas.update');
     });
 
     Route::get( '/edukasi/create',     [EducationContentController::class,'create'])->name('edukasi.create');

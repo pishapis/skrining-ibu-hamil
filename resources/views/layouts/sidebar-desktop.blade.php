@@ -63,22 +63,11 @@
         </div>
 
         <!-- Manajemen Pengguna (Superadmin) -->
-        <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600" x-data="{ openDropdown: false }">
-            <button @click="openDropdown = !openDropdown" class="w-full text-left flex items-center">
-                <i class="fa-solid fa-users mr-2"></i>
+         <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('manajemen.pengguna') ? 'bg-blue-100 text-blue-800' : ''])>
+            <a href="{{ route('manajemen.pengguna', [], false) }}" class="w-full flex items-center">
+                <i class="fa-solid fa-users mr-3"></i>
                 Pengguna Akun
-                <svg class="ml-auto w-5 h-5">
-                    <path fill="currentColor" fill-rule="evenodd" d="M7.293 9.293a1 1 0 011.414 0L10 11.586l1.293-2.293a1 1 0 011.414 1.414L10 14.414l-3.707-3.707a1 1 0 011.414-1.414z" clip-rule="evenodd" />
-                </svg>
-            </button>
-            <div x-show="openDropdown" x-cloak class="pl-5 space-y-2">
-                <a href="{{ route('manajemen.pengguna', [], false) }}" data-swup-preload class="block px-3 py-2 text-sm hover:text-cyan-700">
-                    Kelola Pengguna
-                </a>
-                <a href="#" class="block px-3 py-2 text-sm hover:text-cyan-700">
-                    Kelola Peran & Akses
-                </a>
-            </div>
+            </a>
         </div>
         @endif
 

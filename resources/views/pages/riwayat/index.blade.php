@@ -946,7 +946,7 @@
                     list.forEach(row => {
                         const card = el('div', 'bg-white rounded-xl shadow p-4 flex flex-col gap-2');
 
-                        let nama = null;
+                        let nama = "";
                         if (isAdminView) {
                             nama = el('div', 'flex items-start justify-start');
                             const badgeNama = el('span', 'px-2 py-0.5 rounded text-base font-senibold');
