@@ -56,7 +56,7 @@ window.updateWizard = function () {
   }
 }
 
-Alpine.start()
+Alpine.start() 
 
 // --- Swup + Plugins ---
 import Swup from 'swup'
