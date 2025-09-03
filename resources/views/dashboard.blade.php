@@ -452,7 +452,7 @@
                 (function() {
                     const scroller = document.getElementById('edu-scroller');
                     if (!scroller) return;
-                    const oke = null;
+                    const mantap = null; 
                     const cards = Array.from(scroller.querySelectorAll('a'));
                     const dotsWrap = document.getElementById('edu-dots');
                     const btns = document.querySelectorAll('.edu-nav');
