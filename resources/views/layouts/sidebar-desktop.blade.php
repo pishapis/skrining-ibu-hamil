@@ -43,10 +43,15 @@
 
         <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600">
             <a href="#" class="w-full flex items-center">
-                <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.707 3.293a1 1 0 00-1.414-1.414L9 8.586 7.707 7.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                <svg class="inline-block mr-2 w-5 h-5 mb-0.5" xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Riwayat">
+                    <path d="M3 12a9 9 0 1 0 3-6.7" />
+                    <path d="M3 4v4h4" />
+                    <circle cx="12" cy="12" r="5" />
+                    <path d="M12 9v3l2 1.2" />
                 </svg>
-                Analisis Data
+                Riwayat Skrining
             </a>
         </div>
 

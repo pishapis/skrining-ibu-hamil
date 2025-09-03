@@ -55,6 +55,7 @@ class DashboardController extends Controller
         }
 
         // === EPDS & DASS (per user pribadi) ===
+        // === EPDS & DASS (per user pribadi) ===
         $latestEpds = null;
         $latestDass = null;
         $epdsCount = 0;
@@ -63,32 +64,49 @@ class DashboardController extends Controller
         $dassSessions = collect();
 
         if ($scope['type'] === 'self' && $dataDiri) {
-            // Subquery: record terakhir per session_token (USER INI)
-            $subEpds = HasilEpds::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
+            // EPDS: ambil 1 row final per session_token (prioritaskan row ringkasan jika ada)
+            $subEpdsMaxDate = HasilEpds::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
                 ->where('ibu_id', $dataDiri->id)
                 ->where('status', 'submitted')
                 ->whereNotNull('session_token')
                 ->groupBy('session_token');
 
+            $subEpdsPick = HasilEpds::from('hasil_epds as he1')
+                ->joinSub($subEpdsMaxDate, 't', function ($j) {
+                    $j->on('he1.session_token', '=', 't.session_token')
+                        ->on('he1.screening_date', '=', 't.max_date');
+                })
+                ->selectRaw('he1.session_token, COALESCE(MAX(CASE WHEN he1.answers_epds_id IS NULL THEN he1.id END), MAX(he1.id)) AS pick_id')
+                ->groupBy('he1.session_token');
+
             $epdsSessions = HasilEpds::from('hasil_epds AS he')
-                ->joinSub($subEpds, 't', function ($j) {
-                    $j->on('he.session_token', '=', 't.session_token')
-                        ->on('he.screening_date', '=', 't.max_date');
+                ->joinSub($subEpdsPick, 'p', function ($j) {
+                    $j->on('he.session_token', '=', 'p.session_token')
+                        ->on('he.id', '=', 'p.pick_id');
                 })
                 ->where('he.ibu_id', $dataDiri->id)
                 ->orderByDesc('he.screening_date')
                 ->get();
 
-            $subDass = HasilDass::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
+            // DASS: pola serupa (pakai MAX(id) saja)
+            $subDassMaxDate = HasilDass::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
                 ->where('ibu_id', $dataDiri->id)
                 ->where('status', 'submitted')
                 ->whereNotNull('session_token')
                 ->groupBy('session_token');
 
+            $subDassPick = HasilDass::from('hasil_dass as hd1')
+                ->joinSub($subDassMaxDate, 't', function ($j) {
+                    $j->on('hd1.session_token', '=', 't.session_token')
+                        ->on('hd1.screening_date', '=', 't.max_date');
+                })
+                ->selectRaw('hd1.session_token, MAX(hd1.id) AS pick_id')
+                ->groupBy('hd1.session_token');
+
             $dassSessions = HasilDass::from('hasil_dass AS hd')
-                ->joinSub($subDass, 't', function ($j) {
-                    $j->on('hd.session_token', '=', 't.session_token')
-                        ->on('hd.screening_date', '=', 't.max_date');
+                ->joinSub($subDassPick, 'p', function ($j) {
+                    $j->on('hd.session_token', '=', 'p.session_token')
+                        ->on('hd.id', '=', 'p.pick_id');
                 })
                 ->where('hd.ibu_id', $dataDiri->id)
                 ->orderByDesc('hd.screening_date')
@@ -147,7 +165,7 @@ class DashboardController extends Controller
 
         // (Opsional) Statistik fasilitas: distribusi trimester, total ibu, dsb (untuk admin/superadmin)
         $facilityStats = ($scope['type'] !== 'self') ? $this->buildFacilityStats($scope) : null;
-        $latestScreenings = ($scope['type'] !== 'self') ? $this->fetchLatestScreenings($scope, 12) : [];
+        $latestScreenings = ($scope['type'] !== 'self') ? $this->fetchLatestScreenings($scope, 12, 5) : [];
 
         $eduRecs = ($role === 'user')
             ? $this->fetchRecommendedEducation($user, $usia, $latestEpds, $latestDass, 8)
@@ -285,14 +303,27 @@ class DashboardController extends Controller
      * Menghasilkan array unified: type, ibu_nama(optional), date, skor ringkas.
      * **Sesuaikan kolom nama ibu di data_diri** (di sini diasumsikan `nama`).
      */
-    private function fetchLatestScreenings(array $scope, int $limit = 12): array
+    private function fetchLatestScreenings(array $scope, int $limit = 12, int $perDayLimit = 5): array
     {
-        // EPDS: latest per session_token
-        $subE = HasilEpds::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
-            ->where('status', 'submitted')->whereNotNull('session_token')->groupBy('session_token');
+        // EPDS: latest per session_token → pick 1 row final
+        $subE1 = HasilEpds::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
+            ->where('status', 'submitted')
+            ->whereNotNull('session_token')
+            ->groupBy('session_token');
+
+        $subE2 = HasilEpds::from('hasil_epds as he1')
+            ->joinSub($subE1, 't', function ($j) {
+                $j->on('he1.session_token', '=', 't.session_token')
+                    ->on('he1.screening_date', '=', 't.max_date');
+            })
+            ->selectRaw('he1.session_token, COALESCE(MAX(CASE WHEN he1.answers_epds_id IS NULL THEN he1.id END), MAX(he1.id)) AS pick_id')
+            ->groupBy('he1.session_token');
 
         $epds = HasilEpds::from('hasil_epds as he')
-            ->joinSub($subE, 't', fn($j) => $j->on('he.session_token', '=', 't.session_token')->on('he.screening_date', '=', 't.max_date'))
+            ->joinSub($subE2, 'p', function ($j) {
+                $j->on('he.session_token', '=', 'p.session_token')
+                    ->on('he.id', '=', 'p.pick_id');
+            })
             ->join('data_diri as dd', 'dd.id', '=', 'he.ibu_id');
 
         if ($scope['type'] === 'facility' && !empty($scope['puskesmas_id'])) {
@@ -300,14 +331,27 @@ class DashboardController extends Controller
         }
 
         $epds = $epds->orderByDesc('he.screening_date')
-            ->limit($limit)->get(['he.total_score', 'he.screening_date', 'dd.nama as ibu_nama']);
+            ->get(['he.total_score', 'he.screening_date', 'dd.nama as ibu_nama']);
 
-        // DASS: latest per session_token
-        $subD = HasilDass::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
-            ->where('status', 'submitted')->whereNotNull('session_token')->groupBy('session_token');
+        // DASS: latest per session_token → pick MAX(id)
+        $subD1 = HasilDass::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
+            ->where('status', 'submitted')
+            ->whereNotNull('session_token')
+            ->groupBy('session_token');
+
+        $subD2 = HasilDass::from('hasil_dass as hd1')
+            ->joinSub($subD1, 't', function ($j) {
+                $j->on('hd1.session_token', '=', 't.session_token')
+                    ->on('hd1.screening_date', '=', 't.max_date');
+            })
+            ->selectRaw('hd1.session_token, MAX(hd1.id) AS pick_id')
+            ->groupBy('hd1.session_token');
 
         $dass = HasilDass::from('hasil_dass as hd')
-            ->joinSub($subD, 't', fn($j) => $j->on('hd.session_token', '=', 't.session_token')->on('hd.screening_date', '=', 't.max_date'))
+            ->joinSub($subD2, 'p', function ($j) {
+                $j->on('hd.session_token', '=', 'p.session_token')
+                    ->on('hd.id', '=', 'p.pick_id');
+            })
             ->join('data_diri as dd', 'dd.id', '=', 'hd.ibu_id');
 
         if ($scope['type'] === 'facility' && !empty($scope['puskesmas_id'])) {
@@ -315,37 +359,51 @@ class DashboardController extends Controller
         }
 
         $dass = $dass->orderByDesc('hd.screening_date')
-            ->limit($limit)->get(['hd.total_depression', 'hd.total_anxiety', 'hd.total_stress', 'hd.screening_date', 'dd.nama as ibu_nama']);
+            ->get(['hd.total_depression', 'hd.total_anxiety', 'hd.total_stress', 'hd.screening_date', 'dd.nama as ibu_nama']);
 
-        // Satukan & urutkan
+        // Satukan & beri cap timestamp untuk sort stabil
         $items = [];
         foreach ($epds as $r) {
             $dt = Carbon::parse($r->screening_date);
             $items[] = [
-                'type' => 'EPDS',
-                'ibu'  => $r->ibu_nama,
-                'date' => $dt->toDateString(),
+                'type'  => 'EPDS',
+                'ibu'   => $r->ibu_nama,
+                'date'  => $dt->toDateString(),
                 'label' => $dt->translatedFormat('d M Y'),
+                'ts'    => $dt->timestamp,
                 'scores' => ['total' => (int)$r->total_score],
             ];
         }
         foreach ($dass as $r) {
             $dt = Carbon::parse($r->screening_date);
             $items[] = [
-                'type' => 'DASS-21',
-                'ibu'  => $r->ibu_nama,
-                'date' => $dt->toDateString(),
+                'type'  => 'DASS-21',
+                'ibu'   => $r->ibu_nama,
+                'date'  => $dt->toDateString(),
                 'label' => $dt->translatedFormat('d M Y'),
+                'ts'    => $dt->timestamp,
                 'scores' => [
-                    'dep' => (int)$r->total_depression,
-                    'anx' => (int)$r->total_anxiety,
+                    'dep'    => (int)$r->total_depression,
+                    'anx'    => (int)$r->total_anxiety,
                     'stress' => (int)$r->total_stress,
                 ],
             ];
         }
 
-        usort($items, fn($a, $b) => strcmp($b['date'], $a['date']));
-        return array_slice($items, 0, $limit);
+        // Sort desc by waktu, lalu limit 5 per tanggal
+        $items = collect($items)
+            ->sortByDesc('ts')
+            ->values()
+            ->groupBy('date')
+            ->flatMap(fn($g) => $g->take($perDayLimit))
+            ->values();
+
+        // Opsional: batasi total item yang dikirim ke UI
+        if ($limit > 0) {
+            $items = $items->take($limit)->values();
+        }
+
+        return $items->all();
     }
 
     // ===================== Helpers: Tren (user pribadi) =====================

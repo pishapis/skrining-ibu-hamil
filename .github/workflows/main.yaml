@@ -1,0 +1,52 @@
+name: Deploy to VPS AWS via SSH
+
+on:
+  push:
+    branches:
+      - main  # Menentukan bahwa pipeline akan dijalankan saat ada push ke branch main
+
+jobs:
+  deploy:
+    name: SSH Deploy Action  
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3  # Mengambil kode dari repository
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"  # Menyesuaikan dengan versi PHP di VPS
+          extensions: mbstring, xml, curl, zip
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader  # Menginstal dependensi Composer tanpa dev dependencies
+
+      - name: Set up Node.js (Versi 22)
+        uses: actions/setup-node@v3  # Setup Node.js
+        with:
+          node-version: '22'  # Sesuaikan dengan versi Node.js yang digunakan di lokal
+
+      - name: Install npm dependencies
+        run: npm install  # Install npm dependencies (termasuk Alpine.js)
+
+      - name: Build front-end assets with Vite
+        run: npm run build  # Build assets frontend menggunakan Vite
+
+      - name: Setup SSH key for VPS access
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.VPS_HOSTINGER_SECRET }}  # Menggunakan SSH key yang disimpan di GitHub Secrets
+
+      - name: Deploy to VPS via SSH 
+        run: |
+          ssh -t -o StrictHostKeyChecking=no ubuntu@${{ secrets.VPS_HOSTINGER_IP }} << 'EOF'
+              cd /var/www/test/skrining-ibu-hamil || exit
+              git stash || exit  # Menyimpan perubahan lokal jika ada
+              git pull origin main || exit
+              composer install --no-dev --optimize-autoloader || exit
+              sudo chown -R www-data:www-data storage bootstrap/cache || exit
+              sudo systemctl restart apache2 || exit
+          EOF
+ 
