@@ -1081,8 +1081,16 @@
                     renderDesktop(list);
                 }
 
-                // Init pertama
-                render();
+                // jalan segera jika DOM sudah siap, kalau belum tunggu
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', render, {
+                        once: true
+                    });
+                } else {
+                    render();
+                }
+                // untuk navigasi Swup
+                document.addEventListener('swup:contentReplaced', render);
 
             })();
         </script>

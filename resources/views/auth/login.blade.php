@@ -65,7 +65,7 @@
             <button type="submit" class="btn-primary w-full">Masuk</button>
             @if (Route::has('register'))
             <p class="text-center text-gray-600 text-sm mt-4">Belum punya akun? 
-                <a href="{{ route('register', [], false) }}" data-swup-preload class="text-blue-600 font-medium hover:underline">Daftar</a>
+                <a href="{{ route('register') }}" class="text-blue-600 font-medium hover:underline">Daftar</a>
             </p>
             @endif
         </form>
