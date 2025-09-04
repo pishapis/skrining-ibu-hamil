@@ -47,7 +47,6 @@ jobs:
               git pull origin main || exit
               composer install --no-dev --optimize-autoloader || exit
               composer dump-autoload -o || exit
-              npm run build || exit
               php artisan optimize:clear || exit
               php artisan config:cache || exit
               sudo chown -R www-data:www-data storage bootstrap/cache || exit
