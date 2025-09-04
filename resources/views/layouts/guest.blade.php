@@ -36,8 +36,15 @@
                 {{ $slot }}
             </div>
         </div>
+        <script data-swup-reload-script>
+            document.addEventListener('swup:ready', () => {
+                document.addEventListener('swup:visit:start', () => {
+                try { window.swup?.cache?.clear() } catch (e) {}
+                });
+            });
+        </script>
+        {{ $scripts ?? '' }}
     </div>
-    {{ $scripts ?? '' }}
 </body>
 
 <script data-swup-reload-script>

@@ -419,7 +419,6 @@
 
         {{-- ====== SEED JSON untuk komponen client (dibaca di app.js) ====== --}}
         <x-slot name="scripts">
-            <!-- <script data-swup-reload-script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> -->
             <script data-swup-reload-script type="application/json" id="dashboard-seed">
                 {!! json_encode([
                     'kpi' => $kpi,
