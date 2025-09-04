@@ -149,7 +149,7 @@ function readSeed(id = 'dashboard-seed') {
 
 function hydrateDashboard() {
   const seed = readSeed();
-  if (!seed) return;
+  if (!seed) return; 
   if (typeof window.initAll === 'function') {
     try { window.initAll(seed.epdsTrend || []); } catch {}
   }

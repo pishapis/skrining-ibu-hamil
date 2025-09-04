@@ -1077,7 +1077,7 @@
 
                 function render() {
                     const list = filtered();
-                    renderMobile(list);
+                    renderMobile(list); 
                     renderDesktop(list);
                 }
 

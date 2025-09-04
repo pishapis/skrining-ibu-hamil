@@ -421,7 +421,7 @@
         <x-slot name="scripts">
             <script data-swup-reload-script type="application/json" id="dashboard-seed">
                 {!! json_encode([
-                    'kpi' => $kpi,
+                    'kpi' => $kpi, 
                     'alerts' => $alerts,
                     'latest' => [
                         'epds' => $latestEpds ? [

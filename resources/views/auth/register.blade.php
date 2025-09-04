@@ -511,7 +511,7 @@
                 try {
                     const requestData = {
                         provId: provId
-                    };
+                    }; 
                     const routeUrl = "{{ route('kota.filter') }}";
                     const fetchKota = new Fetch(routeUrl);
                     fetchKota.method = 'GET';
