@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -150,6 +150,49 @@ class ProfileController extends Controller
         } catch (\Throwable $e) {
             report($e);
             return back()->withInput()->with('danger', 'Terjadi kesalahan di server. Silakan coba lagi.');
+        }
+    }
+
+    public function updateSuperadmin(Request $request)
+    {
+        $user = Auth::user();
+        $validated = $request->validate([
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+            'username' => [
+                'required',
+                'string',
+                'lowercase',
+                'max:50',
+                'min:3',
+                Rule::unique('users', 'username')->ignore($user->id),
+            ]
+        ]);
+
+        try {
+
+            $user->update([
+                'username'  => $validated['username'],
+                'email' => Str::lower($validated['email']),
+            ]);
+
+            return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        } catch(\Exception $e){
+
+            Log::error('Terjadi kesalahan di server. Silakan coba lagi', [
+                'message'      => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
+                'payload'      => $request->all(),
+            ]);
+
+            return back()->with('error', ' Terjadi kesalahan, silakan coba lagi.')
+                ->withInput();
         }
     }
 

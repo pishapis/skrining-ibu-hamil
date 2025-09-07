@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use App\Models\DataDiri;
 use App\Models\Suami;
 use App\Models\Anak;
+use App\Models\Jabatan;
 use App\Models\RiwayatKesehatan;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Rule;
@@ -31,8 +32,9 @@ class RegisteredUserController extends Controller
     public function create(): View
     {
         $puskesmas = Puskesmas::all();
-        $provinsis = Provinsi::all();
-        return view('auth.register', compact('puskesmas', 'provinsis'));
+        $provinsis     = DataDiri::optionsProvinsi();
+        $daftarJabatan = Jabatan::all();
+        return view('auth.register', compact('puskesmas', 'provinsis', 'daftarJabatan'));
     }
 
     /**
