@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Controllers\Master\FaskesController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SkriningController;
 use App\Http\Controllers\RiwayatSkriningController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Filter\FilterAlamatController;
 use App\Http\Controllers\Master\PenggunaController;
+use App\Http\Controllers\Master\JabatanController;
 use App\Http\Controllers\Master\EducationContentController;
 use App\Http\Controllers\Admin\RescreenTokenController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -21,12 +24,31 @@ Route::middleware(['auth', 'verified', 'is_superadmin'])->group(function () {
 
     Route::controller(PenggunaController::class)->group(function () {
         Route::get('manajemen-pengguna', 'index')->name('manajemen.pengguna');
-        Route::get('pengguna-update-bu', 'updateIbu')->name('pengguna.ibu.update');
-        Route::get('pengguna-update-puskesmas', 'updatePuskesmas')->name('pengguna.puskesmas.update');
+        Route::post('pengguna-update-bu', 'updateIbu')->name('pengguna.ibu.update');
+        Route::post('pengguna-update-puskesmas', 'updatePuskesmas')->name('pengguna.puskesmas.update');
+        Route::post('pengguna-create-ibu', 'createIbu')->name('pengguna.ibu.create');
+        Route::post('pengguna-create-puskesmas', 'createPuskesmas')->name('pengguna.puskesmas.create');
     });
 
-    Route::get( '/edukasi/create',     [EducationContentController::class,'create'])->name('edukasi.create');
-    Route::post('/edukasi',            [EducationContentController::class,'store'])->name('edukasi.store');
+    Route::controller(JabatanController::class)->group(function () {
+        Route::get('manajemen-jabatan', 'index')->name('manajemen.jabatan');
+        Route::post('jabatan-update', 'update')->name('jabatan.update');
+        Route::post('jabatan-create', 'store')->name('jabatan.store');
+        Route::post('jabatan-delete', 'destroy')->name('jabatan.destroy');
+    });
+
+    Route::controller(FaskesController::class)->group(function () {
+        Route::get('manajemen-faskes', 'index')->name('manajemen.faskes');
+        Route::post('faskes-update-rujukan', 'updateRujukan')->name('faskes.rujukan.update');
+        Route::post('faskes-update-puskesmas', 'updatePuskesmas')->name('faskes.puskesmas.update');
+        Route::post('faskes-create-rujukan', 'createRujukan')->name('faskes.rujukan.create');
+        Route::post('faskes-create-puskesmas', 'createPuskesmas')->name('faskes.puskesmas.create');
+    });
+
+    Route::get( '/register-user',     [RegisteredUserController::class,'create'])->name('register.user');
+
+    Route::get( '/edukasi-create',     [EducationContentController::class,'create'])->name('edukasi.create');
+    Route::post('/edukasi/post',            [EducationContentController::class,'store'])->name('edukasi.store');
     Route::get( '/edukasi/{slug}/edit', [EducationContentController::class,'edit'])->name('edukasi.edit');
     Route::put( '/edukasi/{slug}',      [EducationContentController::class,'update'])->name('edukasi.update');
     Route::delete('/edukasi/{slug}',    [EducationContentController::class,'destroy'])->name('edukasi.destroy');
@@ -69,6 +91,7 @@ Route::controller(FilterAlamatController::class)->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile-superadmin', [ProfileController::class, 'updateSuperadmin'])->name('profile.update.superadmin');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/edukasi',               [EducationContentController::class,'index'])->name('edukasi.index');

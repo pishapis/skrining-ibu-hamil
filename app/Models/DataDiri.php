@@ -72,10 +72,6 @@ class DataDiri extends Model
     {
         return $this->belongsTo(Provinsi::class, 'kode_prov', 'code');
     }
-    public function provinsi(): BelongsTo
-    {
-        return $this->belongsTo(Provinsi::class, 'kode_prov', 'code');
-    }
 
     public function puskesmas(): BelongsTo
     {

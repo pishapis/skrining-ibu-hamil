@@ -10,7 +10,15 @@ class Puskesmas extends Model
     protected $primaryKey = 'id';
     public $timestamps = true;
     protected $fillable = [
-        'nama','alamat','kec','kode_kec','kota','kode_kota','prov','kode_prov','faskes_rujukan_id'
+        'nama',
+        'alamat',
+        'kec',
+        'kode_kec',
+        'kota',
+        'kode_kota',
+        'prov',
+        'kode_prov',
+        'faskes_rujukan_id'
     ];
 
     public function faskes()
@@ -32,5 +40,4 @@ class Puskesmas extends Model
     {
         return $this->belongsTo(Kecamatan::class, 'kode_kec', 'code');
     }
-
 }

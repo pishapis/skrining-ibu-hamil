@@ -12,7 +12,15 @@ class FasilitasKesehatan extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'nama', 'alamat', 'kec', 'kode_kec', 'kota', 'kode_kota', 'prov', 'kode_prov', 'no_telp',
+        'nama',
+        'alamat',
+        'kec',
+        'kode_kec',
+        'kota',
+        'kode_kota',
+        'prov',
+        'kode_prov',
+        'no_telp',
     ];
 
     public function kec()
@@ -29,5 +37,4 @@ class FasilitasKesehatan extends Model
     {
         return $this->belongsTo(Provinsi::class, 'kode_prov', 'id');
     }
-
 }

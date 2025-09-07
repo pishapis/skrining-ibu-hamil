@@ -79,10 +79,12 @@
     </div>
 
     {{-- ROOT: data items untuk JS --}}
+    @if (Auth::user()->role_id !== 1)
     <div class="flex flex-wrap gap-2">
         <button type="button" id="btn-export-epds" class="btn btn-primary">Export EPDS</button>
         <button type="button" id="btn-export-dass" class="btn btn-secondary">Export DASS</button>
     </div>
+    @endif
 
     <div id="riwayat-root" class="max-w-7xl mx-auto p-4 sm:p-6"
         data-role="{{ $role ?? 'user' }}"
@@ -146,6 +148,7 @@
         </script>
 
         <script data-swup-reload-script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
+
         <script data-swup-reload-script>
             (function() {
 
@@ -1077,20 +1080,23 @@
 
                 function render() {
                     const list = filtered();
-                    renderMobile(list);
+                    renderMobile(list); 
                     renderDesktop(list);
                 }
 
                 // jalan segera jika DOM sudah siap, kalau belum tunggu
                 if (document.readyState === 'loading') {
+                    document.addEventListener('swup:visit:start', () => {
+                        try { window.swup?.cache?.clear() } catch (e) {}
+                    });
+                    document.addEventListener('swup:contentReplaced', render);
+                    document.addEventListener('swup:page:view', render);
                     document.addEventListener('DOMContentLoaded', render, {
                         once: true
                     });
                 } else {
                     render();
                 }
-                // untuk navigasi Swup
-                document.addEventListener('swup:contentReplaced', render);
 
             })();
         </script>

@@ -59,4 +59,11 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Jabatan::class, 'jabatan_id');
     }
+
+    public static function optionsjabatans()
+    {
+        return Jabatan::query()
+            ->orderBy('nama')
+            ->pluck('nama', 'id');
+    }
 }

@@ -17,29 +17,68 @@
 
         <!-- Menu Superadmin -->
         @if(Auth::user()->role_id == 3)
-        <div class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600" x-data="{ openDropdown: false }">
-            <button @click="openDropdown = !openDropdown" class="w-full text-left flex items-center">
-                <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <div
+            class="px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600"
+            x-data="{ openMaster:false, openSkrining:false, openFaskes:false }"
+            @keydown.escape.window="openMaster=false; openSkrining=false; openFaskes=false"
+            @click.outside="openMaster=false; openSkrining=false; openFaskes=false">
+            <!-- level 1 -->
+            <button
+                @click="openMaster = !openMaster; if(!openMaster){ openSkrining=false; openFaskes=false }"
+                :aria-expanded="openMaster"
+                class="w-full text-left flex items-center">
+                <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                     <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                     <path fill-rule="evenodd" d="M4 5a2 2 0 012-2V1a1 1 0 10-2 0v2H4zm5 0V1a1 1 0 10-2 0v2H7zm4 0V1a1 1 0 10-2 0v2H9zm2-2a2 2 0 012 2h2V1a1 1 0 10-2 0v2h-2zM5 5h10V18a2 2 0 01-2 2H7a2 2 0 01-2-2V5zm12 0h-1V3h1a2 2 0 012 2v13a2 2 0 01-2 2h-1V5z" clip-rule="evenodd" />
                 </svg>
-                Data Skrining
-                <svg class="ml-auto w-5 h-5">
-                    <path fill="currentColor" fill-rule="evenodd" d="M7.293 9.293a1 1 0 011.414 0L10 11.586l1.293-2.293a1 1 0 011.414 1.414L10 14.414l-3.707-3.707a1 1 0 011.414-1.414z" clip-rule="evenodd" />
+                Master
+                <svg class="ml-auto w-5 h-5 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor" :class="openMaster ? 'rotate-180' : ''" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 011.08 1.04l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
                 </svg>
             </button>
-            <div x-show="openDropdown" x-cloak class="pl-5 space-y-2">
-                <a href="#" class="block px-3 py-2 text-sm hover:text-cyan-700">
-                    Pertanyaan EPDS & DASS
+
+            <div x-show="openMaster" x-cloak x-transition.origin.top class="pl-5 space-y-2 mt-2">
+                <!-- submenu: Skrining -->
+                <button
+                    @click.stop="openFaskes=false; openSkrining=!openSkrining"
+                    :aria-expanded="openSkrining"
+                    class="w-full text-left flex items-center ml-1 transition hover:text-sky-500 hidden">
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M7.8 10a2.2 2.2 0 0 0 4.4 0 2.2 2.2 0 0 0-4.4 0z" />
+                    </svg>
+                    Skrining
+                </button>
+                <div x-show="openSkrining" x-cloak x-transition.origin.top.left class="pl-5">
+                    <a href="#" @click="openMaster=false; openSkrining=false; openFaskes=false" class="block px-3 py-1 text-sm transition hover:text-purple-600">Pertanyaan EPDS & DASS</a>
+                    <a href="#" @click="openMaster=false; openSkrining=false; openFaskes=false" class="block px-3 py-1 text-sm transition hover:text-purple-600">Pilihan Jawaban</a>
+                    <a href="#" @click="openMaster=false; openSkrining=false; openFaskes=false" class="block px-3 py-1 text-sm transition hover:text-purple-600">Skala & Dimensi</a>
+                </div>
+
+                <!-- submenu: Faskes -->
+                <a href="{{ route('manajemen.faskes', [], false) }}" class="w-full flex items-center ml-1 hover:text-sky-500">
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M7.8 10a2.2 2.2 0 0 0 4.4 0 2.2 2.2 0 0 0-4.4 0z" />
+                    </svg>
+                    Faskes
                 </a>
-                <a href="#" class="block px-3 py-2 text-sm hover:text-cyan-700">
-                    Pilihan Jawaban
+
+                <!-- link lain -->
+                <a href="{{ route('manajemen.pengguna', [], false) }}" class="w-full flex items-center ml-1 hover:text-sky-500">
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M7.8 10a2.2 2.2 0 0 0 4.4 0 2.2 2.2 0 0 0-4.4 0z" />
+                    </svg>
+                    Pengguna Akun
                 </a>
-                <a href="#" class="block px-3 py-2 text-sm hover:text-cyan-700">
-                    Skala & Dimensi
+
+                <a href="{{ route('manajemen.jabatan', [], false) }}" class="w-full flex items-center ml-1 hover:text-sky-500">
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M7.8 10a2.2 2.2 0 0 0 4.4 0 2.2 2.2 0 0 0-4.4 0z" />
+                    </svg>
+                    Jabatan
                 </a>
             </div>
         </div>
+
 
         <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('riwayat.skrining') ? 'bg-blue-100 text-blue-800' : ''])>
             <a href="{{ url('/riwayat-skrining') }}" class="w-full flex items-center">
@@ -59,14 +98,6 @@
             <a href="{{ route('edukasi.create') }}" class="w-full flex items-center">
                 <i class="fa-solid fa-share mr-3"></i>
                 Post Edukasi
-            </a>
-        </div>
-
-        <!-- Manajemen Pengguna (Superadmin) -->
-         <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('manajemen.pengguna') ? 'bg-blue-100 text-blue-800' : ''])>
-            <a href="{{ route('manajemen.pengguna', [], false) }}" class="w-full flex items-center">
-                <i class="fa-solid fa-users mr-3"></i>
-                Pengguna Akun
             </a>
         </div>
         @endif

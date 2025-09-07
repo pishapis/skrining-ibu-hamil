@@ -66,7 +66,7 @@
             @if (Route::has('register'))
             <p class="text-center text-gray-600 text-sm mt-4">Belum punya akun? 
                 <a href="{{ route('register') }}" class="text-blue-600 font-medium hover:underline">Daftar</a>
-            </p>
+            </p> 
             @endif
         </form>
     </div>
