@@ -13,6 +13,8 @@ class HasilDass extends Model
         'ibu_id',
         'usia_hamil_id',
         'status',
+        'mode',
+        'periode',
         'session_token',
         'trimester',
         'dass_id',
@@ -47,5 +49,58 @@ class HasilDass extends Model
     public function usiaHamil()
     {
         return $this->belongsTo(UsiaHamil::class, 'usia_hamil_id');
+    }
+
+    public function scopeKehamilan($query)
+    {
+        return $query->whereNotNull('usia_hamil_id')
+                    ->where('mode', 'kehamilan');
+    }
+
+    public function scopeUmum($query)
+    {
+        return $query->whereNull('usia_hamil_id')
+                    ->where('mode', 'umum');
+    }
+
+    public function scopeByTrimester($query, $trimester)
+    {
+        return $query->kehamilan()->where('trimester', $trimester);
+    }
+
+    public function scopeByPeriode($query, $periode)
+    {
+        return $query->umum()->where('periode', $periode);
+    }
+
+    public function getIsKehamilanAttribute(): bool
+    {
+        return !is_null($this->usia_hamil_id) && 
+               $this->mode === 'kehamilan';
+    }
+
+    public function getIsUmumAttribute(): bool
+    {
+        return is_null($this->usia_hamil_id) && 
+               $this->mode === 'umum';
+    }
+    
+    /**
+     * Get label jenis skrining
+     */
+    public function getJenisLabelAttribute(): string
+    {
+        return $this->is_kehamilan ? 'Kehamilan' : 'Umum';
+    }
+    
+    /**
+     * Get identifier (trimester atau periode)
+     */
+    public function getIdentifierAttribute(): string
+    {
+        if ($this->is_kehamilan) {
+            return $this->trimester ?? '-';
+        }
+        return $this->periode ?? '-';
     }
 }

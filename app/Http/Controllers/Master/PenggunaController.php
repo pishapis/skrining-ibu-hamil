@@ -29,21 +29,44 @@ class PenggunaController extends Controller
     public function index()
     {
         $title = "Manajemen Pengguna";
-        $dataIbu = DataDiri::with(['user', 'kec', 'kel', 'prov', 'faskes', 'puskesmas', 'anak', 'suami'])
-            ->paginate(10, ['*'], 'page_ibu');
+        $user = Auth::user();
+        $role = $user->role_id;
 
-        $data_puskesmas = DataDiri::with(['user', 'kec', 'kel', 'prov', 'puskesmas'])
-            ->whereHas('user', fn($q) => $q->where('role_id', 2))
-            ->paginate(10, ['*'], 'page_puskesmas');
+        // Jika Superadmin, tampilkan semua data
+        // Jika Admin Clinician, filter berdasarkan puskesmas_id
+        $dataIbuQuery = DataDiri::whereNotNull('faskes_rujukan_id')
+            ->with(['user', 'kec', 'kel', 'prov', 'faskes', 'puskesmas', 'anak', 'suami']);
 
-        $provinsis      = DataDiri::optionsProvinsi();
-        $kota           = collect(); // biarkan kosong, akan diisi via AJAX onChange
-        $kec            = collect();
-        $desa           = collect();
+        // Jika Admin Clinician, filter berdasarkan puskesmas_id
+        if ($role == 2) {
+            $dataIbuQuery->where('puskesmas_id', $user->puskesmas_id);
+        }
 
-        $puskesmas      = Puskesmas::orderBy('nama')->get();
-        $rujukan        = FasilitasKesehatan::orderBy('nama')->get();
-        $daftarJabatan  = Jabatan::orderBy('nama')->get();
+        // Query untuk data ibu
+        $dataIbu = $dataIbuQuery->paginate(10, ['*'], 'page_ibu');
+
+        // Query untuk data puskesmas
+        $data_puskesmasQuery = DataDiri::with(['user', 'kec', 'kel', 'prov', 'puskesmas'])
+            ->whereHas('user', fn($q) => $q->where('role_id', 2));
+
+        // Jika Admin Clinician, filter berdasarkan puskesmas_id
+        if ($role == 2) {
+            $data_puskesmasQuery->where('puskesmas_id', $user->puskesmas_id);
+        }
+
+        // Query untuk data puskesmas
+        $data_puskesmas = $data_puskesmasQuery->paginate(10, ['*'], 'page_puskesmas');
+
+        // Data lainnya
+        $provinsis = DataDiri::optionsProvinsi();
+        $kota = collect(); // biarkan kosong, akan diisi via AJAX onChange
+        $kec = collect();
+        $desa = collect();
+        
+        $puskesmas = Puskesmas::orderBy('nama')->get();
+        $rujukan = FasilitasKesehatan::orderBy('nama')->get();
+        $daftarJabatan = Jabatan::orderBy('nama')->get();
+        $faskes = FasilitasKesehatan::orderBy('nama')->get();
 
         return view('pages.master.pengguna.index', [
             'title' => $title,
@@ -56,8 +79,10 @@ class PenggunaController extends Controller
             'puskesmas' => $puskesmas,
             'rujukan' => $rujukan,
             'daftarJabatan' => $daftarJabatan,
+            'faskes' => $faskes,
         ]);
     }
+
 
     public function createIbu(Request $request)
     {
@@ -67,6 +92,7 @@ class PenggunaController extends Controller
             'email'     => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->letters()->numbers()],
             'password_confirmation' => ['required'],
+            'is_luar_wilayah' => ['required', 'boolean'],
 
             // ===== STEP 2: Data Ibu (biodata)
             'name'              => ['required', 'string', 'max:100'],
@@ -128,6 +154,7 @@ class PenggunaController extends Controller
                 // 1) User
                 $user = User::create([
                     'role_id'   => 1, //user
+                    'puskesmas_id'  => $validated['puskesmas_id'],
                     'name'      => $validated['name'],
                     'username'  => $validated['username'],
                     'email'     => $validated['email'],
@@ -146,6 +173,7 @@ class PenggunaController extends Controller
                     'agama'             => $validated['agama'],
                     'golongan_darah'         => $validated['gol_darah'],
 
+                    'is_luar_wilayah'  => $validated['is_luar_wilayah'],
                     'kode_prov'         => $validated['prov_id'],
                     'kode_kab'         => $validated['kota_id'],
                     'kode_kec'          => $validated['kec_id'],
@@ -201,7 +229,12 @@ class PenggunaController extends Controller
                 return back()->with('success', 'Data ibu berhasil dibuat.')
                     ->with('tab', 'ibu');
             });
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
+            Log::error('Terjadi kesalahan di server. Silakan coba lagi', [
+                'message'      => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
+                'payload'      => $request->all(),
+            ]);
             return back()
                 ->with('error', ' Terjadi kesalahan, silakan coba lagi.')
                 ->withInput()
@@ -214,49 +247,51 @@ class PenggunaController extends Controller
         try {
             // 1) Validasi (bila gagal, langsung ke catch ValidationException)
             $validated = $request->validate([
-                'name'              => ['required', 'string', 'max:255'],
-                'tempat_lahir'      => ['nullable', 'string', 'max:255'],
-                'tanggal_lahir'     => ['nullable', 'date'],
-                'pendidikan'        => ['nullable', 'in:sd,smp,sma,d3,s1,s2,s3,lainnya'],
-                'pekerjaan'         => ['nullable', 'string', 'max:64'],
-                'agama'             => ['nullable', 'in:islam,protestan,katolik,hindu,buddha,konghucu,lainnya'],
-                'gol_darah'         => ['nullable', 'in:a,b,ab,o'],
-                'prov_id'           => ['nullable', 'string', 'max:16', Rule::exists('indonesia_provinces', 'code')],
-                'kota_id'           => ['nullable', 'string', 'max:16', Rule::exists('indonesia_cities', 'code')],
-                'kec_id'            => ['nullable', 'string', 'max:16', Rule::exists('indonesia_districts', 'code')],
-                'kelurahan_id'      => ['nullable', 'string', 'max:16', Rule::exists('indonesia_villages', 'code')],
-                'alamat_rumah'      => ['nullable', 'string', 'max:1000'],
-                'no_telp'           => ['nullable', 'string', 'max:32'],
-                'puskesmas_id'      => ['nullable', Rule::exists('puskesmas', 'id')],
-                'faskes_rujukan_id' => ['nullable', Rule::exists('fasilitas_kesehatan_rujukan', 'id')],
-                'no_jkn'            => ['nullable', 'string', 'max:64'],
+                'name_edit'              => ['required', 'string', 'max:255'],
+                'tempat_lahir_edit'      => ['nullable', 'string', 'max:255'],
+                'tanggal_lahir_edit'     => ['nullable', 'date'],
+                'is_luar_wilayah_edit'   => ['nullable', 'boolean'],
+                'pendidikan_edit'        => ['nullable', 'in:sd,smp,sma,d3,s1,s2,s3,lainnya'],
+                'pekerjaan_edit'         => ['nullable', 'string', 'max:64'],
+                'agama_edit'             => ['nullable', 'in:islam,protestan,katolik,hindu,buddha,konghucu,lainnya'],
+                'gol_darah_edit'         => ['nullable', 'in:a,b,ab,o'],
+                'prov_id_edit'           => ['nullable', 'string', 'max:16', Rule::exists('indonesia_provinces', 'code')],
+                'kota_id_edit'           => ['nullable', 'string', 'max:16', Rule::exists('indonesia_cities', 'code')],
+                'kec_id_edit'            => ['nullable', 'string', 'max:16', Rule::exists('indonesia_districts', 'code')],
+                'kelurahan_id_edit'      => ['nullable', 'string', 'max:16', Rule::exists('indonesia_villages', 'code')],
+                'alamat_rumah_edit'      => ['nullable', 'string', 'max:1000'],
+                'no_telp_edit'           => ['nullable', 'string', 'max:32'],
+                'puskesmas_id_edit'      => ['nullable', Rule::exists('puskesmas', 'id')],
+                'faskes_rujukan_id_edit' => ['nullable', Rule::exists('fasilitas_kesehatan_rujukan', 'id')],
+                'no_jkn_edit'            => ['nullable', 'string', 'max:64'],
             ]);
             $id = $request->input('id');
             $dataDiri = DataDiri::findOrFail($id);
 
             // 2) Simpan ke tabel data_diri
             $dataDiri->update([
-                'nama'                => $validated['name'],
-                'tempat_lahir'        => $validated['tempat_lahir'] ?? null,
-                'tanggal_lahir'       => $validated['tanggal_lahir'] ?? null,
-                'pendidikan_terakhir' => $validated['pendidikan'] ?? null,
-                'pekerjaan'           => $validated['pekerjaan'] ?? null,
-                'agama'               => $validated['agama'] ?? null,
-                'golongan_darah'      => $validated['gol_darah'] ?? null,
-                'kode_prov'           => $validated['prov_id'] ?? null,
-                'kode_kab'            => $validated['kota_id'] ?? null,
-                'kode_kec'            => $validated['kec_id'] ?? null,
-                'kode_des'            => $validated['kelurahan_id'] ?? null,
-                'alamat_rumah'        => $validated['alamat_rumah'] ?? null,
-                'no_telp'             => $validated['no_telp'] ?? null,
-                'puskesmas_id'        => $validated['puskesmas_id'] ?? null,
-                'faskes_rujukan_id'   => $validated['faskes_rujukan_id'] ?? null,
-                'no_jkn'              => $validated['no_jkn'] ?? null,
+                'nama'                => $validated['name_edit'],
+                'tempat_lahir'        => $validated['tempat_lahir_edit'] ?? null,
+                'tanggal_lahir'       => $validated['tanggal_lahir_edit'] ?? null,
+                'pendidikan_terakhir' => $validated['pendidikan_edit'] ?? null,
+                'pekerjaan'           => $validated['pekerjaan_edit'] ?? null,
+                'agama'               => $validated['agama_edit'] ?? null,
+                'golongan_darah'      => $validated['gol_darah_edit'] ?? null,
+                'is_luar_wilayah'     => $validated['is_luar_wilayah'] ?? false,
+                'kode_prov'           => $validated['prov_id_edit'] ?? null,
+                'kode_kab'            => $validated['kota_id_edit'] ?? null,
+                'kode_kec'            => $validated['kec_id_edit'] ?? null,
+                'kode_des'            => $validated['kelurahan_id_edit'] ?? null,
+                'alamat_rumah'        => $validated['alamat_rumah_edit'] ?? null,
+                'no_telp'             => $validated['no_telp_edit'] ?? null,
+                'puskesmas_id'        => $validated['puskesmas_id_edit'] ?? null,
+                'faskes_rujukan_id'   => $validated['faskes_rujukan_id_edit'] ?? null,
+                'no_jkn'              => $validated['no_jkn_edit'] ?? null,
             ]);
 
             $user = User::findOrFail($request->user_id);
             $user->update([
-                'name' => $validated['name']
+                'name' => $validated['name_edit']
             ]);
 
             // 4) Respons sukses (JSON vs Redirect)
@@ -311,62 +346,77 @@ class PenggunaController extends Controller
 
     public function createPuskesmas(Request $request)
     {
+
         $validated = $request->validate([
             // ===== STEP 1: Akun
-            'username'  => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')],
-            'email'     => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')],
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->letters()->numbers()],
-            'password_confirmation' => ['required'],
+            'username_pus_create'  => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')],
+            'email_pus_create'     => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')],
+            'password_pus_create' => ['nullable', Password::min(8)->mixedCase()->letters()->numbers()],
+            'password_confirmation_pus_create' => ['nullable'],
 
             // ===== STEP 2: Data Puskesmas (biodata)
-            'name'              => ['required', 'string', 'max:100'],
-            'nik'               => ['required', 'digits:16', Rule::unique('data_diri', 'nik')], // sesuaikan table
-            'prov_id'           => ['required', 'string'],
-            'kota_id'           => ['required', 'string'],
-            'kec_id'            => ['required', 'string'],
-            'kelurahan_id'      => ['required', 'string'],
+            'name_pus_create'              => ['required', 'string', 'max:100'],
+            'nik_pus_create'               => ['required', 'digits:16', Rule::unique('data_diri', 'nik')], // sesuaikan table
+            'prov_id_pus_create'           => ['required', 'string'],
+            'kota_id_pus_create'           => ['required', 'string'],
+            'kec_id_pus_create'            => ['required', 'string'],
+            'kelurahan_id_pus_create'      => ['required', 'string'],
 
-            'alamat_rumah'      => ['required', 'string', 'max:255'],
-            'no_telp'           => ['nullable', 'string', 'max:20'],
-            'puskesmas_id'     => ['nullable', 'integer', 'exists:puskesmas,id'],
-            'jabatan_id'     => ['nullable', 'integer', 'exists:puskesmas,id'],
+            'alamat_rumah_pus_create'      => ['required', 'string', 'max:255'],
+            'no_telp_pus_create'           => ['nullable', 'string', 'max:20'],
+            'puskesmas_id_pus_create'     => ['nullable', 'integer', 'exists:puskesmas,id'],
+            'jabatan_id_pus_create'     => ['nullable', 'integer', 'exists:puskesmas,id'],
         ]);
+        $validated['password_pus_create'] = trim($validated['password_pus_create']);
+        $validated['password_confirmation_pus_create'] = trim($validated['password_confirmation_pus_create']);
+
+        if ($request->input('password_pus_create') !== $request->input('password_confirmation_pus_create')) {
+            return back()->withErrors([
+                'password_confirmation_pus_create' => 'Password dan konfirmasi password tidak cocok.'
+            ]);
+        }
 
         try {
-            $validated['faskes_rujukan_id'] = blank($validated['faskes_rujukan_id'] ?? null) ? null : (int)$validated['faskes_rujukan_id'];
+            $validated['jabatan_id_pus_create'] = blank($validated['jabatan_id_pus_create'] ?? null) ? null : (int)$validated['jabatan_id_pus_create'];
             return DB::transaction(function () use ($request, $validated) {
                 // 1) User
                 $user = User::create([
                     'role_id'    => 2, //puskesmas
-                    'name'       => $validated['name'],
-                    'jabatan_id' => $validated['jabatan_id'],
-                    'username'   => $validated['username'],
-                    'email'      => $validated['email'],
-                    'password'   => Hash::make($validated['password']),
+                    'puskesmas_id'  => $validated['puskesmas_id_pus_create'],
+                    'name'       => $validated['name_pus_create'],
+                    'jabatan_id' => $validated['jabatan_id_pus_create'],
+                    'username'   => $validated['username_pus_create'],
+                    'email'      => $validated['email_pus_create'],
+                    'password'   => Hash::make($validated['password_pus_create']),
                 ]);
 
                 // 2) Biodata Puskesmas (DataDiri)
                 DataDiri::create([
                     'user_id'           => $user->id,
-                    'nama'              => $validated['name'],
-                    'nik'               => $validated['nik'],
+                    'nama'              => $validated['name_pus_create'],
+                    'nik'               => $validated['nik_pus_create'],
 
-                    'kode_prov'         => $validated['prov_id'],
-                    'kode_kab'         => $validated['kota_id'],
-                    'kode_kec'          => $validated['kec_id'],
-                    'kode_des'    => $validated['kelurahan_id'],
+                    'kode_prov'         => $validated['prov_id_pus_create'],
+                    'kode_kab'         => $validated['kota_id_pus_create'],
+                    'kode_kec'          => $validated['kec_id_pus_create'],
+                    'kode_des'    => $validated['kelurahan_id_pus_create'],
 
-                    'alamat_rumah'      => $validated['alamat_rumah'],
-                    'no_telp'           => $validated['no_telp'] ?? null,
-                    'no_jkn'            => $validated['no_jkn'] ?? null,
+                    'alamat_rumah'      => $validated['alamat_rumah_pus_create'],
+                    'no_telp'           => $validated['no_telp_pus_create'] ?? null,
+                    'no_jkn'            => $validated['no_jkn_pus_create'] ?? null,
 
-                    'puskesmas_id'     => $validated['puskesmas_id'] ?? null,
+                    'puskesmas_id'     => $validated['puskesmas_id_pus_create'] ?? null,
                 ]);
 
                 return back()->with('success', 'Data puskesmas berhasil dibuat.')
                     ->with('tab', 'puskesmas');
             });
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
+            Log::error('Terjadi kesalahan di server. Silakan coba lagi', [
+                'message'      => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
+                'payload'      => $request->all(),
+            ]);
             return back()
                 ->with('error', ' Terjadi kesalahan, silakan coba lagi.')
                 ->withInput()
@@ -377,34 +427,34 @@ class PenggunaController extends Controller
     public function updatePuskesmas(Request $request, DataDiri $dataDiri)
     {
         $validated = $request->validate([
-            'name'         => ['required', 'string', 'max:255'],
-            'prov_id'           => ['nullable', 'string', 'max:16', Rule::exists('indonesia_provinces', 'code')],
-            'kota_id'           => ['nullable', 'string', 'max:16', Rule::exists('indonesia_cities', 'code')],
-            'kec_id'            => ['nullable', 'string', 'max:16', Rule::exists('indonesia_districts', 'code')],
-            'kelurahan_id'      => ['nullable', 'string', 'max:16', Rule::exists('indonesia_villages', 'code')],
-            'alamat_rumah' => ['nullable', 'string', 'max:1000'],
-            'no_telp'      => ['nullable', 'string', 'max:32'],
-            'puskesmas_id' => ['nullable', Rule::exists('puskesmas', 'id')],
-            'jabatan_id'   => ['required', Rule::exists('jabatan', 'id')],
+            'name_edit'         => ['required', 'string', 'max:255'],
+            'prov_id_edit_pus'           => ['nullable', 'string', 'max:16', Rule::exists('indonesia_provinces', 'code')],
+            'kota_id_edit_pus'           => ['nullable', 'string', 'max:16', Rule::exists('indonesia_cities', 'code')],
+            'kec_id_edit_pus'            => ['nullable', 'string', 'max:16', Rule::exists('indonesia_districts', 'code')],
+            'kelurahan_id_edit_pus'      => ['nullable', 'string', 'max:16', Rule::exists('indonesia_villages', 'code')],
+            'alamat_rumah_edit' => ['nullable', 'string', 'max:1000'],
+            'no_telp_edit'      => ['nullable', 'string', 'max:32'],
+            'puskesmas_id_edit' => ['nullable', Rule::exists('puskesmas', 'id')],
+            'jabatan_id_edit'   => ['required', Rule::exists('jabatan', 'id')],
         ]);
 
         try {
             $id = $request->input('id');
             $dataDiri = DataDiri::findOrFail($id);
             $dataDiri->update([
-                'nama'         => $validated['name'],
-                'kode_prov'    => $validated['prov_id'] ?? null,
-                'kode_kab'     => $validated['kota_id'] ?? null,
-                'kode_kec'     => $validated['kec_id'] ?? null,
-                'kode_des'     => $validated['kelurahan_id'] ?? null,
-                'alamat_rumah' => $validated['alamat_rumah'] ?? null,
-                'no_telp'      => $validated['no_telp'] ?? null,
-                'puskesmas_id' => $validated['puskesmas_id'] ?? null,
+                'nama'         => $validated['name_edit'],
+                'kode_prov'    => $validated['prov_id_edit_pus'] ?? null,
+                'kode_kab'     => $validated['kota_id_edit_pus'] ?? null,
+                'kode_kec'     => $validated['kec_id_edit_pus'] ?? null,
+                'kode_des'     => $validated['kelurahan_id_edit_pus'] ?? null,
+                'alamat_rumah' => $validated['alamat_rumah_edit'] ?? null,
+                'no_telp'      => $validated['no_telp_edit'] ?? null,
+                'puskesmas_id' => $validated['puskesmas_id_edit'] ?? null,
             ]);
 
             $user = User::findOrFail($request->user_id);
             $user->update([
-                'name' => $validated['name']
+                'name' => $validated['name_edit']
             ]);
 
             return back()->with('success', 'Data staf puskesmas berhasil diperbarui.')

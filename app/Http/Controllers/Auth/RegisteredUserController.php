@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Provinsi;
 use App\Models\Puskesmas;
+use App\Models\FasilitasKesehatan;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,9 +33,10 @@ class RegisteredUserController extends Controller
     public function create(): View
     {
         $puskesmas = Puskesmas::all();
+        $faskes = FasilitasKesehatan::all();
         $provinsis     = DataDiri::optionsProvinsi();
         $daftarJabatan = Jabatan::all();
-        return view('auth.register', compact('puskesmas', 'provinsis', 'daftarJabatan'));
+        return view('auth.register', compact('puskesmas', 'faskes', 'provinsis', 'daftarJabatan'));
     }
 
     /**
@@ -50,6 +52,7 @@ class RegisteredUserController extends Controller
             'email'     => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->letters()->numbers()],
             'password_confirmation' => ['required'],
+            'is_luar_wilayah' => ['required', 'boolean'],
 
             // ===== STEP 2: Data Ibu (biodata)
             'name'              => ['required', 'string', 'max:100'],
@@ -110,11 +113,12 @@ class RegisteredUserController extends Controller
             return DB::transaction(function () use ($request, $validated) {
                 // 1) User
                 $user = User::create([
-                    'role_id'   => 1, //user
-                    'name'      => $validated['name'],
-                    'username'  => $validated['username'],
-                    'email'     => $validated['email'],
-                    'password'  => Hash::make($validated['password']),
+                    'role_id'       => 1, //user
+                    'puskesmas_id'  => $validated['puskesmas_id'],
+                    'name'          => $validated['name'],
+                    'username'      => $validated['username'],
+                    'email'         => $validated['email'],
+                    'password'      => Hash::make($validated['password']),
                 ]);
 
                 // 2) Biodata Ibu (DataDiri)
@@ -128,7 +132,8 @@ class RegisteredUserController extends Controller
                     'pekerjaan'         => $validated['pekerjaan'],
                     'agama'             => $validated['agama'],
                     'golongan_darah'         => $validated['gol_darah'],
-
+                    
+                    'is_luar_wilayah'  => $validated['is_luar_wilayah'],
                     'kode_prov'         => $validated['prov_id'],
                     'kode_kab'         => $validated['kota_id'],
                     'kode_kec'          => $validated['kec_id'],

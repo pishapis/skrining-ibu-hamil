@@ -12,6 +12,7 @@ use App\Models\DataDiri;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class EducationContentController extends Controller
 {
@@ -54,6 +55,24 @@ class EducationContentController extends Controller
         }
 
         $contents = $q->paginate(12)->withQueryString();
+        $contents->getCollection()->transform(function ($content) {
+            // Mengambil media embed untuk YouTube
+            $coverUrl = null;
+            $embed = $content->media->firstWhere('media_type', 'embed');
+
+            if ($embed) {
+                $youtubeId = $this->youtubeId($embed->external_url);
+                if ($youtubeId) {
+                    $coverUrl = 'https://i.ytimg.com/vi/' . $youtubeId . '/hqdefault.jpg';
+                }
+            }
+
+            // Menambahkan coverUrl ke dalam objek konten
+            $content->coverUrl = $coverUrl;
+
+            return $content;
+        });
+        
         return view('pages.edukasi.index', compact('contents'));
     }
     
@@ -151,7 +170,7 @@ class EducationContentController extends Controller
         $roleId = (int)($user?->role_id ?? 1);
         if ($content->visibility === 'private' && $roleId !== 3 && $user?->id !== $content->author_id) abort(403);
         if ($content->visibility === 'facility') {
-            $pid = $user?->puskesmas_id ?? optional(\App\Models\DataDiri::where('user_id', $user?->id)->first())->puskesmas_id;
+            $pid = $user?->puskesmas_id ?? optional(DataDiri::where('user_id', $user?->id)->first())->puskesmas_id;
             if (!$pid || $pid != $content->puskesmas_id) abort(403);
         }
 
@@ -336,5 +355,31 @@ class EducationContentController extends Controller
                 'sort_order'  => $sort++,
             ]);
         }
+    }
+
+    private function youtubeId(?string $url): ?string
+    {
+        if (!$url) return null;
+        $u = parse_url($url);
+        if (!$u || empty($u['host'])) return null;
+
+        // youtu.be/<id>
+        if (str_contains($u['host'], 'youtu.be')) {
+            return ltrim($u['path'] ?? '', '/');
+        }
+
+        // youtube.com/watch?v=<id>
+        if (str_contains($u['host'], 'youtube.com')) {
+            if (!empty($u['query'])) {
+                parse_str($u['query'], $q);
+                return $q['v'] ?? null;
+            }
+            // youtube.com/embed/<id>
+            if (!empty($u['path']) && str_contains($u['path'], '/embed/')) {
+                return trim(str_replace('/embed/', '', $u['path']), '/');
+            }
+        }
+
+        return null;
     }
 }

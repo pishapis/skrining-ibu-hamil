@@ -12,8 +12,8 @@
                     <button class="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm">Cari</button>
                 </div>
             </form>
-            @if(in_array((int)(Auth::user()->role_id ?? 1), [2,3]))
-            <a href="{{ route('edukasi.create') }}" class="px-3 py-2 rounded-lg bg-teal-600 text-white text-sm">+ Buat</a>
+            @if(in_array((int)(Auth::user()->role_id ?? 1), [3]))
+                <a href="{{ route('edukasi.create') }}" class="px-3 py-2 rounded-lg bg-teal-600 text-white text-sm">+ Buat</a>
             @endif
         </div>
     </div>
@@ -26,8 +26,10 @@
         @forelse($contents as $c)
         <a href="{{ route('edukasi.show',$c->slug) }}" class="group rounded-2xl border bg-white overflow-hidden shadow-sm hover:shadow">
             <div class="aspect-[16/9] bg-gray-100">
-                @if($c->cover_path)
-                <img src="{{ asset('storage/'.$c->cover_path) }}" alt="{{ $c->title }}" class="w-full h-full object-cover">
+                @if ($c->coverUrl)
+                    <img src="{{ $c->coverUrl }}" alt="{{ $c->title }}" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
+                @else
+                    <img src="{{ asset('storage/'.$c->cover_path) }}" alt="{{ $c->title }}" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
                 @endif
             </div>
             <div class="p-4">

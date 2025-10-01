@@ -11,8 +11,12 @@ use App\Models\HasilEpds;
 use App\Models\HasilDass;
 use App\Models\SkriningDass;
 use App\Models\UsiaHamil;
+use App\Models\GeneratedLink;
+use App\Models\RiwayatKesehatan;
+use App\Models\User;
 use App\Models\RescreenToken; // <--- NEW
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -61,6 +65,225 @@ class SkriningController extends Controller
             Log::warning('Load usia_hamil gagal: ' . $e->getMessage());
         }
         return view('pages.skrining.index', compact('title', 'answer_epds', 'answer_dass', 'usia_hamil', 'skrining_dass'));
+    }
+
+    public function skrining_umum(Request $request)
+    {
+        // Validasi short_code
+        $fullUrl = $request->fullUrl();
+        $parsedUrl = parse_url($fullUrl);
+        if (!isset($parsedUrl['query'])) abort(404, "Halaman Tidak Ditemukan!");
+        $shortCode = $parsedUrl['query'];
+        $shortCodeValue = str_replace("=", "", $shortCode);
+
+        // Cari data link yang sesuai dengan short_code
+        $generatedLink = GeneratedLink::where('short_code', $shortCodeValue)->first();
+
+        if (!$generatedLink) {
+            abort(404, "Halaman Tidak Ditemukan!");
+        }
+
+        // Ambil puskesmas_id dan token dari original_url
+        parse_str(parse_url($generatedLink->original_url, PHP_URL_QUERY), $params);
+
+        if (!isset($params['puskesmas_id']) || !isset($params['token']) || !isset($params['ts'])) {
+            abort(404, "Halaman Tidak Ditemukan!");
+        }
+
+        $puskesmasId = $params['puskesmas_id'];
+        $token = $params['token'];
+        $timestamp = $params['ts'];
+
+        // Verifikasi token
+        $expectedToken = sha1($puskesmasId . $timestamp . $shortCodeValue . config('app.key'));
+
+        if ($token !== $expectedToken) abort(404, "Halaman Tidak Ditemukan!");
+
+        // Verifikasi apakah link sudah kadaluwarsa
+        $expiresAt = $generatedLink->expires_at;
+        if ($expiresAt && Carbon::parse($expiresAt)->isPast()) abort(404, "Halaman Tidak Ditemukan!");
+
+        // Lanjutkan proses seperti biasa setelah validasi berhasil
+        $title = "Skrining EPDS";
+        $answer_epds = AnswerEpds::with(['epds'])->get();
+        $answer_dass = AnswerDass::all();
+        $skrining_dass = SkriningDass::all();
+
+        // Cek apakah user sudah login
+        if (!Auth::check()) {
+            return view('pages.skrining.skrining-umum', compact('title', 'answer_epds', 'answer_dass', 'skrining_dass'));
+        }
+
+        // Pengolahan data diri dan usia hamil jika ada
+        $usia_hamil = null;
+        $needsDataDiri = false;
+
+        try {
+            $userId = Auth::id();
+            $dataDiri = DataDiri::where('user_id', $userId)->first();
+
+            if (
+                !$dataDiri ||
+                empty($dataDiri->nik) ||
+                empty($dataDiri->nama) ||
+                empty($dataDiri->no_jkn) ||
+                empty($dataDiri->kehamilan_ke)
+            ) {
+                $needsDataDiri = true;
+            }
+
+            if ($dataDiri && !$needsDataDiri) {
+                $riwayat = UsiaHamil::where('ibu_id', $dataDiri->id)
+                    ->whereNotNull('hpht')
+                    ->whereNotNull('hpl')
+                    ->latest('created_at')
+                    ->first();
+
+                if ($riwayat) {
+                    $usiaMinggu  = hitungUsiaKehamilanMinggu($riwayat->hpht);
+                    $trimester   = tentukanTrimester($usiaMinggu);
+                    $keterangan  = hitungUsiaKehamilanString($riwayat->hpht);
+
+                    $usia_hamil = [
+                        'id'          => $riwayat->id,
+                        'hpht'        => $riwayat->hpht,
+                        'hpl'         => $riwayat->hpl,
+                        'usia_minggu' => $usiaMinggu,
+                        'keterangan'  => $keterangan,
+                        'trimester'   => $trimester,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Load usia_hamil gagal: ' . $e->getMessage());
+        }
+
+        return view('pages.skrining.skrining-umum', compact(
+            'title',
+            'answer_epds',
+            'answer_dass',
+            'usia_hamil',
+            'skrining_dass',
+            'needsDataDiri',
+            'puskesmasId'
+        ));
+    }
+
+    // Method untuk handle registrasi minimal guest
+    public function registerGuest(Request $request)
+    {
+        $request->validate([
+            'nik' => 'required|string|max:16|unique:data_diris,nik',
+            'nama' => 'required|string|max:255',
+            'no_jkn' => 'required|string|max:20',
+            'kehamilan_ke' => 'required|integer|min:1',
+            'email' => 'nullable|email|unique:users,email',
+            'phone' => 'nullable|string|max:15'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Buat user baru dengan data minimal
+            $user = User::create([
+                'name' => $request->nama,
+                'email' => $request->email ?: $request->nik . '@guest.local',
+                'password' => Hash::make($request->nik), // temporary password = NIK
+                'email_verified_at' => now(), // auto verify untuk guest
+                'is_guest' => true // flag untuk guest user
+            ]);
+
+            RiwayatKesehatan::create([
+                'ibu_id'                    => $user->id,  // FK ke DataDiri
+                'kehamilan_ke'              => $request->kehamilan_ke,
+                'jml_anak_lahir_hidup'      => 0,
+                'riwayat_keguguran'         => 0,
+                'riwayat_penyakit'          => "",
+            ]);
+
+            // Buat data diri
+            DataDiri::create([
+                'user_id' => $user->id,
+                'nik' => $request->nik,
+                'nama' => $request->nama,
+                'no_jkn' => $request->no_jkn,
+                'no_hp' => $request->phone,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Login otomatis
+            Auth::login($user);
+
+            DB::commit();
+
+            return response()->json([
+                'ack' => 'ok',
+                'message' => 'Registrasi berhasil! Sekarang Anda dapat melanjutkan skrining.',
+                'redirect' => route('skrining.umum')
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Guest registration failed: ' . $e->getMessage());
+
+            return response()->json([
+                'ack' => 'error',
+                'message' => 'Terjadi kesalahan saat registrasi. Silakan coba lagi.'
+            ], 500);
+        }
+    }
+
+    // Method untuk update data diri user yang sudah login tapi belum lengkap
+    public function updateDataDiri(Request $request)
+    {
+        if (!Auth::check()) {
+            return response()->json([
+                'ack' => 'error',
+                'message' => 'Anda harus login terlebih dahulu.'
+            ], 401);
+        }
+
+        $request->validate([
+            'nik' => 'required|string|max:16|unique:data_diris,nik,' . Auth::id() . ',user_id',
+            'nama' => 'required|string|max:255',
+            'no_jkn' => 'required|string|max:20',
+            'kehamilan_ke' => 'required|integer|min:1',
+            'no_hp' => 'nullable|string|max:15'
+        ]);
+
+        try {
+            $dataDiri = DataDiri::where('user_id', Auth::id())->first();
+
+            if ($dataDiri) {
+                $dataDiri->update([
+                    'nik' => $request->nik,
+                    'nama' => $request->nama,
+                    'no_jkn' => $request->no_jkn,
+                    'kehamilan_ke' => $request->kehamilan_ke,
+                    'no_hp' => $request->no_hp,
+                ]);
+            } else {
+                DataDiri::create([
+                    'user_id' => Auth::id(),
+                    'nik' => $request->nik,
+                    'nama' => $request->nama,
+                    'no_jkn' => $request->no_jkn,
+                    'kehamilan_ke' => $request->kehamilan_ke,
+                    'no_hp' => $request->no_hp,
+                ]);
+            }
+
+            return response()->json([
+                'ack' => 'ok',
+                'message' => 'Data berhasil disimpan!',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Update data diri failed: ' . $e->getMessage());
+
+            return response()->json([
+                'ack' => 'error',
+                'message' => 'Terjadi kesalahan saat menyimpan data.'
+            ], 500);
+        }
     }
 
     /* ============================================================
@@ -384,14 +607,20 @@ class SkriningController extends Controller
         try {
             $id = Auth::id();
             $data_diri = DataDiri::where('user_id', $id)->first();
+            
             if (!$data_diri) {
                 return response()->json(['ack' => 'bad', 'message' => 'Data diri pengguna tidak ditemukan', 'data' => null], 200);
             }
 
+            // Auto-detect berdasarkan keberadaan data kehamilan
+            $kesehatan = RiwayatKesehatan::where('ibu_id', $data_diri->id)->first();
             $riwayat = UsiaHamil::where('ibu_id', $data_diri->id)
-                ->whereNotNull('hpht')->whereNotNull('hpl')->first();
+                ->whereNotNull('hpht')
+                ->whereNotNull('hpl')
+                ->latest('created_at')
+                ->first();
 
-            if (!$riwayat) {
+            if (!$riwayat && !$kesehatan) {
                 return response()->json([
                     'ack' => 'need_hpht',
                     'message' => 'HPHT belum diisi. Silakan isi HPHT terlebih dahulu.',
@@ -399,105 +628,212 @@ class SkriningController extends Controller
                 ], 200);
             }
 
-            $usiaMgg   = hitungUsiaKehamilanMinggu($riwayat->hpht);
-            $trimester = tentukanTrimester($usiaMgg);
+            if ($riwayat) {
+                // MODE KEHAMILAN - berdasarkan trimester
+                $usiaMgg = hitungUsiaKehamilanMinggu($riwayat->hpht);
+                $trimester = tentukanTrimester($usiaMgg);
 
-            // sudah pernah submit DASS di trimester ini?
-            $submittedCount = HasilDass::where('ibu_id', $data_diri->id)
-                ->where('trimester', $trimester)
-                ->where('status', 'submitted')
-                ->count();
-
-            // jika sudah, cek token aktif
-            $activeToken = null;
-            if ($submittedCount > 0) {
-                $activeToken = RescreenToken::active()
-                    ->where('ibu_id', $data_diri->id)
-                    ->where('jenis', 'dass')
+                $submittedCount = HasilDass::where('ibu_id', $data_diri->id)
                     ->where('trimester', $trimester)
-                    ->orderByDesc('created_at')
+                    ->where('status', 'submitted')
+                    ->count();
+
+                // Cek token aktif untuk kehamilan
+                $activeToken = null;
+                if ($submittedCount > 0) {
+                    $activeToken = RescreenToken::active()
+                        ->where('ibu_id', $data_diri->id)
+                        ->where('jenis', 'dass')
+                        ->where('trimester', $trimester)
+                        ->whereNull('mode') // kehamilan tidak pakai mode
+                        ->orderByDesc('created_at')
+                        ->first();
+
+                    $usable = $activeToken && $activeToken->used_count < $activeToken->max_uses;
+                    if (!$usable) {
+                        return response()->json([
+                            'ack' => 'bad',
+                            'message' => 'Skrining DASS-21 untuk trimester ini sudah diselesaikan. Hubungi petugas puskesmas bila perlu skrining ulang.',
+                            'data' => null
+                        ], 200);
+                    }
+                }
+
+                // Cari draft kehamilan yang bisa dilanjutkan
+                $draft = HasilDass::where('ibu_id', $data_diri->id)
+                    ->where('trimester', $trimester)
+                    ->whereNotNull('usia_hamil_id') // pastikan ini kehamilan
+                    ->where('status', 'draft')
+                    ->orderByDesc('started_at')
                     ->first();
 
-                $usable = $activeToken && $activeToken->used_count < $activeToken->max_uses;
-                if (!$usable) {
+                if ($draft) {
+                    $answered = HasilDass::where('session_token', $draft->session_token)
+                        ->whereNotNull('dass_id')
+                        ->count();
+                    $total = SkriningDass::count();
+
                     return response()->json([
-                        'ack' => 'bad',
-                        'message' => 'Skrining DASS-21 untuk trimester ini sudah diselesaikan. Hubungi petugas puskesmas bila perlu skrining ulang.',
-                        'data' => null
-                    ]);
+                        'ack' => 'ok',
+                        'message' => 'Lanjutkan skrining kehamilan yang tertunda.',
+                        'data' => [
+                            'session_token' => $draft->session_token,
+                            'type'          => 'kehamilan',
+                            'trimester'     => $trimester,
+                            'usia_hamil_id' => $riwayat->id,
+                            'answered'      => $answered,
+                            'total'         => $total,
+                            'batch_no'      => (int)($draft->batch_no ?? 1),
+                        ]
+                    ], 200);
                 }
+
+                // Buat session baru untuk kehamilan
+                $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $submittedCount, $activeToken) {
+                    $now = now();
+                    $riwayatLock = UsiaHamil::lockForUpdate()->find($riwayat->id);
+
+                    $session = HasilDass::create([
+                        'ibu_id'            => $data_diri->id,
+                        'usia_hamil_id'     => $riwayatLock->id,
+                        'status'            => 'draft',
+                        'session_token'     => (string) Str::uuid(),
+                        'trimester'         => $trimester,
+                        'started_at'        => $now,
+                        'screening_date'    => $now,
+                        'rescreen_token_id' => $activeToken?->id,
+                        'batch_no'          => $submittedCount + 1,
+                        // Kolom umum dikosongkan
+                        'mode'              => 'kehamilan',
+                        'periode'           => null,
+                    ]);
+
+                    // Stamp kolom trimester (kalau kosong)
+                    if ($trimester === 'trimester_1' && !$riwayatLock->trimester_1) $riwayatLock->trimester_1 = $now;
+                    if ($trimester === 'trimester_2' && !$riwayatLock->trimester_2) $riwayatLock->trimester_2 = $now;
+                    if ($trimester === 'trimester_3' && !$riwayatLock->trimester_3) $riwayatLock->trimester_3 = $now;
+                    if ($trimester === 'pasca_hamil' && !$riwayatLock->pasca_hamil) $riwayatLock->pasca_hamil = $now;
+                    $riwayatLock->save();
+
+                    return [
+                        'ack' => 'ok',
+                        'message' => 'Session skrining kehamilan dimulai.',
+                        'data' => [
+                            'session_token' => $session->session_token,
+                            'type'          => 'kehamilan',
+                            'trimester'     => $trimester,
+                            'usia_hamil_id' => $riwayatLock->id,
+                            'answered'      => 0,
+                            'total'         => SkriningDass::count(),
+                            'batch_no'      => (int)$session->batch_no,
+                        ]
+                    ];
+                });
+
+                return response()->json($payload, 200);
+
+            } else {
+                // MODE UMUM - berdasarkan periode bulanan
+                $periode = now()->format('Y-m');
+                
+                $submittedCount = HasilDass::where('ibu_id', $data_diri->id)
+                    ->where('mode', 'umum')
+                    ->where('periode', $periode)
+                    ->where('status', 'submitted')
+                    ->count();
+
+                // Cek token aktif untuk umum
+                $activeToken = null;
+                if ($submittedCount > 0) {
+                    $activeToken = RescreenToken::active()
+                        ->where('ibu_id', $data_diri->id)
+                        ->where('jenis', 'dass')
+                        ->where('mode', 'umum')
+                        ->where('periode', $periode)
+                        ->orderByDesc('created_at')
+                        ->first();
+
+                    $usable = $activeToken && $activeToken->used_count < $activeToken->max_uses;
+                    if (!$usable) {
+                        return response()->json([
+                            'ack' => 'bad',
+                            'message' => 'Skrining DASS-21 periode ini sudah diselesaikan. Hubungi petugas bila perlu skrining ulang.',
+                            'data' => null
+                        ], 200);
+                    }
+                }
+
+                // Cari draft umum yang bisa dilanjutkan
+                $draft = HasilDass::where('ibu_id', $data_diri->id)
+                    ->where('mode', 'umum')
+                    ->where('periode', $periode)
+                    ->whereNull('usia_hamil_id') // pastikan ini umum
+                    ->where('status', 'draft')
+                    ->orderByDesc('started_at')
+                    ->first();
+
+                if ($draft) {
+                    $answered = HasilDass::where('session_token', $draft->session_token)
+                        ->whereNotNull('dass_id')
+                        ->count();
+                    $total = SkriningDass::count();
+
+                    return response()->json([
+                        'ack' => 'ok',
+                        'message' => 'Lanjutkan skrining umum yang tertunda.',
+                        'data' => [
+                            'session_token' => $draft->session_token,
+                            'type'          => 'umum',
+                            'periode'       => $periode,
+                            'answered'      => $answered,
+                            'total'         => $total,
+                            'batch_no'      => (int)($draft->batch_no ?? 1),
+                        ]
+                    ], 200);
+                }
+
+                // Buat session baru untuk umum
+                $payload = DB::transaction(function () use ($data_diri, $periode, $submittedCount, $activeToken) {
+                    $now = now();
+                    
+                    $session = HasilDass::create([
+                        'ibu_id'            => $data_diri->id,
+                        'mode'              => 'umum',
+                        'periode'           => $periode,
+                        'status'            => 'draft',
+                        'session_token'     => (string) Str::uuid(),
+                        'started_at'        => $now,
+                        'screening_date'    => $now,
+                        'rescreen_token_id' => $activeToken?->id,
+                        'batch_no'          => $submittedCount + 1,
+                        // Kolom kehamilan dikosongkan
+                        'usia_hamil_id'     => null,
+                        'trimester'         => null,
+                    ]);
+
+                    return [
+                        'ack' => 'ok',
+                        'message' => 'Session skrining umum dimulai.',
+                        'data' => [
+                            'session_token' => $session->session_token,
+                            'type'          => 'umum',
+                            'periode'       => $periode,
+                            'answered'      => 0,
+                            'total'         => SkriningDass::count(),
+                            'batch_no'      => (int)$session->batch_no,
+                        ]
+                    ];
+                });
+
+                return response()->json($payload, 200);
             }
 
-            // Lanjutkan draft kalau ada
-            $draft = HasilDass::where('ibu_id', $data_diri->id)
-                ->where('trimester', $trimester)
-                ->where('status', 'draft')
-                ->orderByDesc('started_at')
-                ->first();
-
-            if ($draft) {
-                $answered = HasilDass::where('session_token', $draft->session_token)
-                    ->whereNotNull('dass_id')->count();
-                $total = SkriningDass::count();
-                return response()->json([
-                    'ack' => 'ok',
-                    'message' => 'Lanjutkan skrining yang tertunda.',
-                    'data' => [
-                        'session_token' => $draft->session_token,
-                        'trimester'     => $trimester,
-                        'usia_hamil_id' => $riwayat->id,
-                        'answered'      => $answered,
-                        'total'         => $total,
-                        'batch_no'      => (int)($draft->batch_no ?? 1), // <--- NEW
-                    ]
-                ]);
-            }
-
-            // Session baru
-            $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $submittedCount, $activeToken) {
-                $now = now();
-                $riwayatLock = UsiaHamil::lockForUpdate()->find($riwayat->id);
-
-                $session = HasilDass::create([
-                    'ibu_id'            => $data_diri->id,
-                    'usia_hamil_id'     => $riwayatLock->id,
-                    'status'            => 'draft',
-                    'session_token'     => (string) Str::uuid(),
-                    'trimester'         => $trimester,
-                    'started_at'        => $now,
-                    'screening_date'    => $now,
-                    'rescreen_token_id' => $activeToken?->id,          // <--- NEW
-                    'batch_no'          => $submittedCount + 1,        // <--- NEW
-                ]);
-
-                if ($trimester === 'trimester_1' && !$riwayatLock->trimester_1) $riwayatLock->trimester_1 = $now;
-                if ($trimester === 'trimester_2' && !$riwayatLock->trimester_2) $riwayatLock->trimester_2 = $now;
-                if ($trimester === 'trimester_3' && !$riwayatLock->trimester_3) $riwayatLock->trimester_3 = $now;
-                if ($trimester === 'pasca_hamil' && !$riwayatLock->pasca_hamil) $riwayatLock->pasca_hamil = $now;
-                $riwayatLock->save();
-
-                return [
-                    'ack' => 'ok',
-                    'message' => 'Session skrining dimulai.',
-                    'data' => [
-                        'session_token' => $session->session_token,
-                        'trimester'     => $trimester,
-                        'usia_hamil_id' => $riwayatLock->id,
-                        'answered'      => 0,
-                        'total'         => SkriningDass::count(),
-                        'batch_no'      => (int)$session->batch_no,     // <--- NEW
-                    ]
-                ];
-            });
-
-            return response()->json($payload);
         } catch (\Exception $e) {
             Log::error("startDass error: " . $e->getMessage());
             return response()->json(['ack' => 'bad', 'message' => 'Gagal memulai skrining', 'data' => null], 200);
         }
     }
 
-    /** POST /dass/answer */
     public function saveDassAnswer(Request $request)
     {
         $request->validate([
@@ -518,14 +854,16 @@ class SkriningController extends Controller
                 HasilDass::updateOrCreate(
                     ['session_token' => $request->session_token, 'dass_id' => $request->dass_id],
                     [
-                        'ibu_id'          => $seed->ibu_id,
-                        'usia_hamil_id'   => $seed->usia_hamil_id,
-                        'status'          => 'draft',
-                        'trimester'       => $seed->trimester,
-                        'answers_dass_id' => $request->answers_dass_id,
-                        'screening_date'  => now(),
-                        'rescreen_token_id' => $seed->rescreen_token_id, // ikutkan
-                        'batch_no'        => $seed->batch_no,
+                        'ibu_id'             => $seed->ibu_id,
+                        'mode'               => $seed->mode,
+                        'periode'            => $seed->periode,
+                        'usia_hamil_id'      => $seed->usia_hamil_id,
+                        'trimester'          => $seed->trimester,
+                        'status'             => 'draft',
+                        'answers_dass_id'    => $request->answers_dass_id,
+                        'screening_date'     => now(),
+                        'rescreen_token_id'  => $seed->rescreen_token_id,
+                        'batch_no'           => $seed->batch_no,
                     ]
                 );
 
@@ -543,7 +881,6 @@ class SkriningController extends Controller
         }
     }
 
-    /** POST /dass/submit */
     public function submitDass(Request $request)
     {
         $request->validate([
@@ -552,7 +889,6 @@ class SkriningController extends Controller
 
         try {
             $result = DB::transaction(function () use ($request) {
-
                 $seed = HasilDass::where('session_token', $request->session_token)
                     ->lockForUpdate()->first();
 
@@ -571,14 +907,14 @@ class SkriningController extends Controller
                     return ['ack' => 'bad', 'message' => 'Belum ada jawaban yang disimpan', 'data' => null];
                 }
 
-                // ------- Skoring DASS-21 -------
+                // Skoring DASS-21 (sama untuk kehamilan dan umum)
                 $grpDep = [3, 5, 10, 13, 16, 17, 21];
                 $grpAnx = [2, 4, 7, 9, 15, 19, 20];
                 $grpStr = [1, 6, 8, 11, 12, 14, 18];
 
                 $scoreByNo = [];
                 foreach ($rows as $r) {
-                    $no = (int) $r->dass_id; // ideal: gunakan kolom 'urutan' jika ada
+                    $no = (int) $r->dass_id;
                     $scoreByNo[$no] = (int) ($r->answersDass->score ?? 0);
                 }
 
@@ -611,9 +947,16 @@ class SkriningController extends Controller
                     'stress'     => $sev($sumStr, 'stress'),
                 ];
 
+                // Advice berdasarkan apakah kehamilan atau umum
+                $isPregnancy = !empty($seed->usia_hamil_id);
                 $advice = 'Hasil berada dalam rentang normal.';
+                
                 if ($levels['depression'] !== 'Normal' || $levels['anxiety'] !== 'Normal' || $levels['stress'] !== 'Normal') {
-                    $advice = 'Pertimbangkan edukasi kesehatan jiwa, teknik relaksasi/napas, sleep hygiene, dan diskusi dengan tenaga kesehatan.';
+                    if ($isPregnancy) {
+                        $advice = 'Pertimbangkan konsultasi dengan bidan, dokter kandungan, atau psikolog untuk mendapatkan dukungan yang tepat selama kehamilan.';
+                    } else {
+                        $advice = 'Pertimbangkan edukasi kesehatan jiwa, teknik relaksasi/napas, sleep hygiene, dan diskusi dengan tenaga kesehatan.';
+                    }
                 }
 
                 $flags = [
@@ -647,13 +990,15 @@ class SkriningController extends Controller
                     'ack' => 'ok',
                     'message' => 'Skrining tersubmit.',
                     'data' => [
-                        'sum'     => ['depression' => $sumDep, 'anxiety' => $sumAnx, 'stress' => $sumStr],
-                        'level'   => $levels,
-                        'advice'  => $advice,
-                        'flags'   => $flags,
-                        'answered' => $rows->count(),
+                        'sum'       => ['depression' => $sumDep, 'anxiety' => $sumAnx, 'stress' => $sumStr],
+                        'level'     => $levels,
+                        'advice'    => $advice,
+                        'flags'     => $flags,
+                        'answered'  => $rows->count(),
+                        'type'      => $isPregnancy ? 'kehamilan' : 'umum',
                         'trimester' => $seed->trimester,
-                        'batch_no' => (int)$seed->batch_no, // opsional untuk UI
+                        'periode'   => $seed->periode,
+                        'batch_no'  => (int)$seed->batch_no,
                     ]
                 ];
             });
@@ -665,7 +1010,6 @@ class SkriningController extends Controller
         }
     }
 
-    /** POST /dass/cancel */
     public function cancelDass(Request $request)
     {
         $request->validate(['session_token' => 'required|uuid']);
@@ -698,7 +1042,6 @@ class SkriningController extends Controller
             return response()->json(['ack' => 'bad', 'message' => 'Gagal membatalkan draft skrining.'], 200);
         }
     }
-
     /* ============================================================
      * Usia Hamil - First Create
      * ============================================================ */

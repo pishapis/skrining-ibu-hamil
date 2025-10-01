@@ -132,7 +132,7 @@
                             <option value="trimester_1" @selected($r->trimester==='trimester_1')>Trimester I</option>
                             <option value="trimester_2" @selected($r->trimester==='trimester_2')>Trimester II</option>
                             <option value="trimester_3" @selected($r->trimester==='trimester_3')>Trimester III</option>
-                            <option value="pasca_hamil" @selected($r->trimester==='pasca_hamil')>Pasca Hamil</option>
+                            <option value="pasca_hamil" @selected($r->trimester==='pasca_hamil')>Pasca Melahirkan</option>
                         </select>
                     </div>
                     <div class="sm:col-span-5 flex justify-end">
@@ -178,7 +178,7 @@
                     <option value="trimester_1">Trimester I</option>
                     <option value="trimester_2">Trimester II</option>
                     <option value="trimester_3">Trimester III</option>
-                    <option value="pasca_hamil">Pasca Hamil</option>
+                    <option value="pasca_hamil">Pasca Melahirkan</option>
                 </select>
             </div>
             <div class="sm:col-span-5 flex justify-end">

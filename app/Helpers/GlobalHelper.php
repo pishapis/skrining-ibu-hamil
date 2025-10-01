@@ -45,6 +45,7 @@ function formatBulanTahun($input)
 
 function formatTanggal($input)
 {
+    if(!isset($input)) return;
     // Pecah string menjadi tahun, bulan, dan tanggal
     [$tahun, $bulan, $tanggal] = explode('-', $input);
 

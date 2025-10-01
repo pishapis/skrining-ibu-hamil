@@ -20,7 +20,7 @@
                         <select name="ibu_id" class="input-field w-full" required>
                             <option value="">-- Pilih Ibu --</option>
                             @foreach($ibus as $ibu)
-                            <option value="{{ $ibu->id }}">{{ $ibu->nama_lengkap }} (ID:{{ $ibu->id }})</option>
+                            <option value="{{ $ibu->id }}">{{ $ibu->nama }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -38,7 +38,7 @@
                                 <option value="trimester_1">Trimester I</option>
                                 <option value="trimester_2">Trimester II</option>
                                 <option value="trimester_3">Trimester III</option>
-                                <option value="pasca_hamil">Pasca Hamil</option>
+                                <option value="pasca_hamil">Pasca Melahirkan</option>
                             </select>
                         </div>
                     </div>
@@ -90,7 +90,7 @@
                             <option value="trimester_1" @selected(request('trimester')==='trimester_1' )>Trimester I</option>
                             <option value="trimester_2" @selected(request('trimester')==='trimester_2' )>Trimester II</option>
                             <option value="trimester_3" @selected(request('trimester')==='trimester_3' )>Trimester III</option>
-                            <option value="pasca_hamil" @selected(request('trimester')==='pasca_hamil' )>Pasca Hamil</option>
+                            <option value="pasca_hamil" @selected(request('trimester')==='pasca_hamil' )>Pasca Melahirkan</option>
                         </select>
                     </div>
                     <div class="self-end">
@@ -128,7 +128,7 @@
                                 @case('trimester_1') Trimester I @break
                                 @case('trimester_2') Trimester II @break
                                 @case('trimester_3') Trimester III @break
-                                @default Pasca Hamil
+                                @default Pasca Melahirkan
                                 @endswitch
                             </td>
                             <td class="py-2">{{ $t->used_count }} / {{ $t->max_uses }}</td>

@@ -1,6 +1,6 @@
 {{-- resources/views/pages/master/pengguna/index.blade.php --}}
 
-<x-app-layout title="Manajemen Jabatan | Skrining Ibu Hamil">
+<x-app-layout title="Manajemen Jabatan | Simkeswa">
     @section('page_title', $title)
 
     {{-- ===================== HEADER + TAB ===================== --}}

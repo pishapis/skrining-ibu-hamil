@@ -15,6 +15,8 @@ class RescreenToken extends Model
         'id',
         'ibu_id',
         'usia_hamil_id',
+        'mode',
+        'periode',
         'jenis',
         'trimester',
         'issued_by',

@@ -1,6 +1,6 @@
 {{-- resources/views/pages/master/pengguna/index.blade.php --}}
 
-<x-app-layout title="Manajemen Pengguna | Skrining Ibu Hamil">
+<x-app-layout title="Manajemen Pengguna | Simkeswa">
     @section('page_title', $title)
 
     {{-- ===================== HEADER + TAB ===================== --}}
@@ -43,6 +43,7 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Lahir</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No JKN</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No Telp</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Luar Wilayah</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Alamat</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Puskesmas</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Faskes</th>
@@ -57,9 +58,10 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ $item->nama }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ $item->nik }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ formatTanggal($item->tanggal_lahir) }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ formatTanggal($item->tanggal_lahir) ?? "" }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ $item->no_jkn }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ $item->no_telp }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ $item->is_luar_wilayah ? 'Ya' : 'Tidak' }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ $item->alamat_rumah }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ $item->puskesmas?->nama }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{{ $item->faskes?->nama }}</td>
@@ -72,6 +74,7 @@
                                        nik: @js($item->nik),
                                        no_telp: @js($item->no_telp),
                                        alamat_rumah: @js($item->alamat_rumah),
+                                       is_luar_wilayah: @js($item->is_luar_wilayah),
                                        puskesmas_id: @js($item->puskesmas_id),
                                        faskes_rujukan_id: @js($item->faskes_rujukan_id),
                                        no_jkn: @js($item->no_jkn),
@@ -177,12 +180,6 @@
         <div id="editModalPengguna" class="p-4"
             x-data="{ get S(){ return $store.editUser ?? { type:'ibu', form:{} } } }">
 
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold"
-                    x-text="S.type === 'ibu' ? 'Edit Data Ibu' : 'Edit Data Puskesmas'"></h3>
-                <button type="button" class="text-gray-500 hover:text-gray-700" x-on:click="show = false">✕</button>
-            </div>
-
             {{-- ========== FORM IBU ========== --}}
             <form x-show="S.type === 'ibu'" x-cloak data-swup-form 
                 :action="`{{ route('pengguna.ibu.update', '_ID_') }}`.replace('_ID_', S.form?.id ?? '')"
@@ -195,22 +192,22 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium">Nama Lengkap</label>
-                        <input name="name" type="text" class="input-field" x-model="S.form.nama">
+                        <input name="name_edit" type="text" class="input-field" x-model="S.form.nama">
                         <x-input-error class="mt-2" :messages="$errors->get('name')" />
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium">Tempat Lahir</label>
-                        <input name="tempat_lahir" type="text" class="input-field" x-model="S.form.tempat_lahir">
+                        <input name="tempat_lahir_edit" type="text" class="input-field" x-model="S.form.tempat_lahir">
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Tanggal Lahir</label>
-                        <input name="tanggal_lahir" type="date" class="input-field" x-model="S.form.tanggal_lahir">
+                        <input name="tanggal_lahir_edit" type="date" class="input-field" x-model="S.form.tanggal_lahir">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium">Pendidikan Terakhir</label>
-                        <select name="pendidikan" class="input-field" x-model="S.form.pendidikan">
+                        <select name="pendidikan_edit" class="input-field" x-model="S.form.pendidikan">
                             <option value="">Pilih pendidikan</option>
                             <option value="sd">SD</option>
                             <option value="smp">SMP</option>
@@ -224,7 +221,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Pekerjaan</label>
-                        <select name="pekerjaan" class="input-field" x-model="S.form.pekerjaan">
+                        <select name="pekerjaan_edit" class="input-field" x-model="S.form.pekerjaan">
                             <option value="">Pilih pekerjaan</option>
                             <option value="dokter">Dokter</option>
                             <option value="perawat">Perawat</option>
@@ -236,7 +233,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Agama</label>
-                        <select name="agama" class="input-field" x-model="S.form.agama">
+                        <select name="agama_edit" class="input-field" x-model="S.form.agama">
                             <option value="">Pilih agama</option>
                             <option value="islam">Islam</option>
                             <option value="protestan">Protestan</option>
@@ -249,7 +246,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Golongan Darah</label>
-                        <select name="gol_darah" class="input-field" x-model="S.form.gol_darah">
+                        <select name="gol_darah_edit" class="input-field" x-model="S.form.gol_darah">
                             <option value="">Pilih golongan darah</option>
                             <option value="a">A</option>
                             <option value="b">B</option>
@@ -259,9 +256,20 @@
                     </div>
 
                     {{-- HIRARKI WILAYAH --}}
+                    <div class="my-4">
+                        <label for="is_luar_wilayah" class="text-gray-700 text-sm font-medium">
+                            Apakah Anda dari luar wilayah?
+                        </label>
+                        <div class="relative">
+                            <input type="checkbox" name="is_luar_wilayah"
+                            class="h-5 w-5 text-teal-600 border-gray-300 rounded" 
+                            x-model="S.form.is_luar_wilayah">
+                            <label class="text-gray-700 text-sm font-medium absolute top-1 ml-2">Ya</label>
+                        </div>
+                    </div>
                     <div>
                         <label class="block text-sm font-medium">Provinsi</label>
-                        <select name="prov_id" class="input-field"
+                        <select name="prov_id_edit" class="input-field"
                             x-model="S.form.prov_id"
                             @change="window.filterKotas(S.form.prov_id)">
                             <option value="" disabled>Pilih Provinsi</option>
@@ -272,7 +280,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Kab/Kota</label>
-                        <select name="kota_id" class="input-field"
+                        <select name="kota_id_edit" class="input-field"
                             x-model="S.form.kota_id"
                             @change="window.filterKecs(S.form.kota_id)">
                             <option value="" disabled>Pilih Kab/Kota</option>
@@ -283,7 +291,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Kecamatan</label>
-                        <select name="kec_id" class="input-field"
+                        <select name="kec_id_edit" class="input-field"
                             x-model="S.form.kec_id"
                             @change="window.filterKels(S.form.kec_id)">
                             <option value="" disabled>Pilih Kecamatan</option>
@@ -294,7 +302,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Kelurahan</label>
-                        <select name="kelurahan_id" class="input-field"
+                        <select name="kelurahan_id_edit" class="input-field"
                             x-model="S.form.kelurahan_id">
                             <option value="" disabled>Pilih Kelurahan</option>
                             @foreach ($desa as $code => $name)
@@ -305,18 +313,18 @@
 
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium">Alamat Rumah</label>
-                        <textarea name="alamat_rumah" rows="2" class="input-field"
+                        <textarea name="alamat_rumah_edit" rows="2" class="input-field"
                             x-model="S.form.alamat_rumah"></textarea>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium">No Telp/HP</label>
-                        <input name="no_telp" type="text" class="input-field" x-model="S.form.no_telp">
+                        <input name="no_telp_edit" type="text" class="input-field" x-model="S.form.no_telp">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium">Puskesmas</label>
-                        <select name="puskesmas_id" class="input-field"
+                        <select name="puskesmas_id_edit" class="input-field"
                             x-model="S.form.puskesmas_id"
                             @change="window.filterFaskesRujukans(S.form.kota_id)">
                             <option value="">Pilih Puskesmas</option>
@@ -328,7 +336,7 @@
 
                     <div>
                         <label class="block text-sm font-medium">Faskes Rujukan</label>
-                        <select name="faskes_rujukan_id" class="input-field"
+                        <select name="faskes_rujukan_id_edit" class="input-field"
                             x-model="S.form.faskes_rujukan_id">
                             <option value="">Pilih Rujukan</option>
                             @foreach ($rujukan as $r)
@@ -339,7 +347,7 @@
 
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium">No JKN</label>
-                        <input name="no_jkn" type="text" class="input-field" x-model="S.form.no_jkn">
+                        <input name="no_jkn_edit" type="text" class="input-field" x-model="S.form.no_jkn">
                     </div>
                 </div>
 
@@ -362,19 +370,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium">Nama Lengkap</label>
-                        <input name="name" type="text" class="input-field" x-model="S.form.nama">
+                        <input name="name_edit" type="text" class="input-field" x-model="S.form.nama">
                     </div>
 
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium">Alamat Rumah</label>
-                        <textarea name="alamat_rumah" rows="2" class="input-field"
+                        <textarea name="alamat_rumah_edit" rows="2" class="input-field"
                             x-model="S.form.alamat_rumah"></textarea>
                     </div>
 
                     {{-- (Opsional) domisili staf --}}
                     <div>
                         <label class="block text-sm font-medium">Provinsi</label>
-                        <select name="prov_id" class="input-field"
+                        <select name="prov_id_edit_pus" class="input-field"
                             x-model="S.form.prov_id"
                             @change="window.filterKotas(S.form.prov_id)">
                             <option value="" disabled>Pilih Provinsi</option>
@@ -385,7 +393,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Kab/Kota</label>
-                        <select name="kota_id" class="input-field"
+                        <select name="kota_id_edit_pus" class="input-field"
                             x-model="S.form.kota_id"
                             @change="window.filterKecs(S.form.kota_id)">
                             <option value="" disabled>Pilih Kab/Kota</option>
@@ -396,7 +404,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Kecamatan</label>
-                        <select name="kec_id" class="input-field"
+                        <select name="kec_id_edit_pus" class="input-field"
                             x-model="S.form.kec_id"
                             @change="window.filterKels(S.form.kec_id)">
                             <option value="" disabled>Pilih Kecamatan</option>
@@ -407,7 +415,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Kelurahan</label>
-                        <select name="kelurahan_id" class="input-field"
+                        <select name="kelurahan_id_edit_pus" class="input-field"
                             x-model="S.form.kelurahan_id">
                             <option value="" disabled>Pilih Kelurahan</option>
                             @foreach ($desa as $code => $name)
@@ -418,11 +426,11 @@
 
                     <div>
                         <label class="block text-sm font-medium">No Telp</label>
-                        <input name="no_telp" type="text" class="input-field" x-model="S.form.no_telp">
+                        <input name="no_telp_edit" type="text" class="input-field" x-model="S.form.no_telp">
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Puskesmas</label>
-                        <select name="puskesmas_id" class="input-field" x-model="S.form.puskesmas_id">
+                        <select name="puskesmas_id_edit" class="input-field" x-model="S.form.puskesmas_id">
                             <option value="">Pilih Puskesmas</option>
                             @foreach ($puskesmas as $p)
                             <option value="{{ $p->id }}">{{ $p->nama }}</option>
@@ -431,7 +439,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium">Jabatan</label>
-                        <select name="jabatan_id" class="input-field" x-model="S.form.jabatan_id">
+                        <select name="jabatan_id_edit" class="input-field" x-model="S.form.jabatan_id">
                             <option value="">Pilih Jabatan</option>
                             @foreach ($daftarJabatan as $j)
                             <option value="{{ $j->id }}">{{ $j->nama }}</option>
@@ -474,6 +482,7 @@
                     alamat_rumah: '',
                     prov_id: '',
                     kota_id: '',
+                    is_luar_wilayah: false,
                     kec_id: '',
                     kelurahan_id: '',
                     puskesmas_id: '',
@@ -496,6 +505,7 @@
                         set(type, item = {}) {
                             this.type = type;
                             this.form = Object.assign(defaults(), item);
+                            this.form.is_luar_wilayah = item.is_luar_wilayah === 1;
                         },
                         reset() {
                             this.set('ibu', {});
@@ -556,11 +566,13 @@
 
                         if (res.ack === 'ok') {
                             const root = getModalRoot();
-                            const el = root.querySelector('select[name="kota_id"]');
+                            const el = root.querySelector('select[name="kota_id_edit"]');
+                            const pus = root.querySelector('select[name="kota_id_edit_pus"]');
                             fillSelect(el, res.data, 'Pilih Kab/Kota');
+                            fillSelect(pus, res.data, 'Pilih Kab/Kota');
                             if (selectedValue) {
                                 el.value = selectedValue;
-                                // trigger next level if needed
+                                pus.value = selectedValue;
                                 await filterKecs(selectedValue, Alpine.store('editUser').form.kec_id);
                             }
                         } else {
@@ -583,10 +595,13 @@
 
                         if (res.ack === 'ok') {
                             const root = getModalRoot();
-                            const el = root.querySelector('select[name="kec_id"]');
+                            const el = root.querySelector('select[name="kec_id_edit"]');
+                            const pus = root.querySelector('select[name="kec_id_edit_pus"]');
                             fillSelect(el, res.data, 'Pilih Kecamatan');
+                            fillSelect(pus, res.data, 'Pilih Kecamatan');
                             if (selectedValue) {
                                 el.value = selectedValue;
+                                pus.value = selectedValue;
                                 await filterKels(selectedValue, Alpine.store('editUser').form.kelurahan_id);
                             }
                         } else {
@@ -611,14 +626,17 @@
                             const root = getModalRoot();
 
                             // Kelurahan
-                            const kelSelect = root.querySelector('select[name="kelurahan_id"]');
+                            const kelSelect = root.querySelector('select[name="kelurahan_id_edit"]');
+                            const kelSelectPus = root.querySelector('select[name="kelurahan_id_edit_pus"]');
                             const kelList = res.data?.kelurahan || res.data || [];
                             fillSelect(kelSelect, kelList, 'Pilih Kelurahan');
+                            fillSelect(kelSelectPus, kelList, 'Pilih Kelurahan');
                             if (selectedValue) kelSelect.value = selectedValue;
+                            if (selectedValue) kelSelectPus.value = selectedValue;
 
                             // Puskesmas (opsional)
                             const puskList = res.data?.puskesmas || [];
-                            const puskSelect = root.querySelector('select[name="puskesmas_id"]');
+                            const puskSelect = root.querySelector('select[name="puskesmas_id_edit"]');
                             if (puskSelect && Array.isArray(puskList)) {
                                 // puskesmas list: valueKey=id, labelKey=nama
                                 fillSelect(puskSelect, puskList, 'Pilih Puskesmas', 'id', 'nama');
@@ -645,7 +663,7 @@
 
                         if (res.ack === 'ok') {
                             const root = getModalRoot();
-                            const faskesSelect = root.querySelector('select[name="faskes_rujukan_id"]');
+                            const faskesSelect = root.querySelector('select[name="faskes_rujukan_id_edit"]');
                             fillSelect(faskesSelect, res.data, 'Pilih Rujukan', 'id', 'nama');
                             if (selectedValue) faskesSelect.value = selectedValue;
                         } else {
@@ -660,6 +678,12 @@
                 window.filterKecs = filterKecs;
                 window.filterKels = filterKels;
                 window.filterFaskesRujukans = filterFaskesRujukans;
+
+                document.addEventListener('swup:visit:start', () => {
+                    try {
+                        window.swup?.cache?.clear()
+                    } catch (e) {}
+                });
             })();
         </script>
 
