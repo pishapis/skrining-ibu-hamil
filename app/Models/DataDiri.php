@@ -21,6 +21,7 @@ class DataDiri extends Model
         'agama',
         'golongan_darah',
         'alamat_rumah',
+        'is_luar_wilayah',
         'kode_prov',
         'kode_kab',
         'kode_kec',
@@ -40,7 +41,7 @@ class DataDiri extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    // Wilayah (kamu sudah punya versi shortname; biarkan & tambah alias verbose)
+    // Wilayah relationships
     public function kec(): BelongsTo
     {
         return $this->belongsTo(Kecamatan::class, 'kode_kec', 'code');
@@ -94,29 +95,70 @@ class DataDiri extends Model
     }
 
     /* ===========================
-       SCOPES: IBU vs PUSKESMAS
+       SCOPES: IBU vs ADMIN CLINICIAN vs SUPERADMIN
        =========================== */
 
     /**
-     * Scope untuk data Ibu (user tanpa jabatan).
+     * Scope untuk data Ibu (user role 1 dengan faskes_rujukan_id).
      * Contoh pakai: DataDiri::ibu()->paginate(10);
      */
     public function scopeIbu($query)
     {
-        return $query->whereDoesntHave('user', function ($q) {
-            $q->whereNotNull('jabatan_id');
-        });
+        return $query->whereHas('user', function ($q) {
+            $q->where('role_id', 1);
+        })->whereNotNull('faskes_rujukan_id');
     }
 
     /**
-     * Scope untuk staf Puskesmas (user punya jabatan).
-     * Contoh pakai: DataDiri::puskesmasStaff()->paginate(10);
+     * Scope untuk admin clinician (user role 2, data di data_diri sebagai profil staf).
+     * Ciri: faskes_rujukan_id = null, tanggal_lahir = null, pendidikan_terakhir = null
+     * Contoh pakai: DataDiri::adminClinician()->paginate(10);
+     */
+    public function scopeAdminClinician($query)
+    {
+        return $query->whereHas('user', function ($q) {
+            $q->where('role_id', 2);
+        })
+        ->whereNull('faskes_rujukan_id')
+        ->whereNull('tanggal_lahir')
+        ->whereNull('pendidikan_terakhir');
+    }
+
+    /**
+     * Scope untuk staf Puskesmas (user punya jabatan) - versi lama, masih bisa dipakai.
      */
     public function scopePuskesmasStaff($query)
     {
         return $query->whereHas('user', function ($q) {
             $q->whereNotNull('jabatan_id');
         });
+    }
+
+    /**
+     * Scope untuk data berdasarkan role user yang sedang login
+     * @param $query
+     * @param User $user
+     * @return mixed
+     */
+    public function scopeForUser($query, $user)
+    {
+        if ($user->isSuperadmin()) {
+            // Superadmin: lihat semua data ibu
+            return $query->ibu();
+        }
+        
+        if ($user->isAdminClinician()) {
+            // Admin clinician: lihat data ibu di puskesmas yang sama
+            return $query->ibu()->where('puskesmas_id', $user->puskesmas_id);
+        }
+        
+        if ($user->isIbu()) {
+            // Ibu: hanya lihat data diri sendiri
+            return $query->where('user_id', $user->id);
+        }
+        
+        // Default: tidak ada data (untuk keamanan)
+        return $query->whereRaw('1 = 0');
     }
 
     /* ===========================
@@ -170,14 +212,33 @@ class DataDiri extends Model
         return $this->faskes?->nama;
     }
 
-    /* ===========================
-       HELPER OPSI SELECT WILAYAH
-       (Hirarki Prov > Kota > Kec > Kel)
-       =========================== */
+    /**
+     * Check apakah data ini adalah profil ibu (bukan admin clinician)
+     */
+    public function getIsIbuProfileAttribute(): bool
+    {
+        return !is_null($this->faskes_rujukan_id) && 
+               !is_null($this->tanggal_lahir) && 
+               $this->user && 
+               $this->user->role_id == 1;
+    }
 
     /**
-     * Ambil opsi provinsi: [code => name]
+     * Check apakah data ini adalah profil admin clinician
      */
+    public function getIsAdminClinicianProfileAttribute(): bool
+    {
+        return is_null($this->faskes_rujukan_id) && 
+               is_null($this->tanggal_lahir) && 
+               is_null($this->pendidikan_terakhir) && 
+               $this->user && 
+               $this->user->role_id == 2;
+    }
+
+    /* ===========================
+       HELPER OPSI SELECT WILAYAH
+       =========================== */
+
     public static function optionsProvinsi()
     {
         return Provinsi::query()
@@ -185,10 +246,6 @@ class DataDiri extends Model
             ->pluck('name', 'code');
     }
 
-    /**
-     * Ambil opsi kota berdasar kode provinsi.
-     * @param  string|null $kodeProv
-     */
     public static function optionsKota(?string $kodeProv)
     {
         if (!$kodeProv) return collect();
@@ -198,10 +255,6 @@ class DataDiri extends Model
             ->pluck('name', 'code');
     }
 
-    /**
-     * Ambil opsi kecamatan berdasar kode kota.
-     * @param  string|null $kodeKab
-     */
     public static function optionsKecamatan(?string $kodeKab)
     {
         if (!$kodeKab) return collect();
@@ -211,10 +264,6 @@ class DataDiri extends Model
             ->pluck('name', 'code');
     }
 
-    /**
-     * Ambil opsi kelurahan berdasar kode kecamatan.
-     * @param  string|null $kodeKec
-     */
     public static function optionsKelurahan(?string $kodeKec)
     {
         if (!$kodeKec) return collect();

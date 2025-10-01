@@ -1,4 +1,4 @@
-<x-guest-layout title="Daftar | Skrining Ibu Hamil">
+<x-guest-layout title="Daftar | Simkeswa">
 
     @include('includes.register-puskesmas')
     <x-slot name="scripts">

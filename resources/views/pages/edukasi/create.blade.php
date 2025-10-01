@@ -1,5 +1,8 @@
 <x-app-layout>
     @section('page_title','Buat Konten')
+    @section('css')
+        <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+    @endsection
     <x-slot name="title">Buat Konten Edukasi</x-slot>
     <x-header-back>Post Edukasi</x-header-back>
 
@@ -19,8 +22,8 @@
         </div>
 
         <div class="rounded-2xl border bg-white p-4 shadow-sm">
-            <label class="text-sm font-medium">Konten (Markdown/HTML ringan)</label>
-            <textarea name="body" class="mt-1 w-full rounded-lg border px-3 py-2" rows="10"></textarea>
+            <label class="text-sm font-medium">Konten</label>
+            <textarea id="body" name="body" class="mt-1 w-full rounded-lg border px-3 py-2 min-h-60" rows="10"></textarea>
         </div>
 
         {{-- MEDIA --}}
@@ -119,7 +122,7 @@
                     <option value="trimester_1">Trimester I</option>
                     <option value="trimester_2">Trimester II</option>
                     <option value="trimester_3">Trimester III</option>
-                    <option value="pasca_hamil">Pasca Hamil</option>
+                    <option value="pasca_hamil">Pasca Melahirkan</option>
                 </select>
             </div>
             <div class="sm:col-span-5 flex justify-end">
@@ -130,16 +133,18 @@
 
     {{-- JS pure (Swup aware) --}}
     <x-slot name="scripts">
+        <script data-swup-reload-script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script data-swup-reload-script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
         <script data-swup-reload-script>
             (function() {
-                const $ = (s, c = document) => c.querySelector(s);
-                const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
-
-                const visSel = $('#visibility');
-                const pusk = $('#puskesmas-field');
-                const list = $('#rules-list');
-                const tpl = $('#rule-template');
-                const addBtn = $('#add-rule-btn');
+                const qs  = (s, c = document) => c.querySelector(s);
+                const qsa = (s, c = document) => Array.from(c.querySelectorAll(s));
+                
+                const visSel = qs('#visibility');
+                const pusk = qs('#puskesmas-field');
+                const list = qs('#rules-list');
+                const tpl = qs('#rule-template');
+                const addBtn = qs('#add-rule-btn');
 
                 const DIM = {
                     epds: [{
@@ -162,7 +167,7 @@
                     const show = visSel.value === 'facility';
                     pusk.classList.toggle('hidden', !show);
                     if (!show) {
-                        const i = $('input[name="puskesmas_id"]', pusk);
+                        const i = qs('input[name="puskesmas_id"]', pusk);
                         if (i) i.value = '';
                     }
                 }
@@ -182,12 +187,12 @@
                 }
 
                 function renum() {
-                    $$('.rule-item', list).forEach((it, i) => {
-                        const t = $('.field-type', it),
-                            d = $('.field-dimension', it),
-                            mn = $('.field-min', it),
-                            mx = $('.field-max', it),
-                            tr = $('.field-tri', it);
+                    qsa('.rule-item', list).forEach((it, i) => {
+                        const t = qs('.field-type', it),
+                            d = qs('.field-dimension', it),
+                            mn = qs('.field-min', it),
+                            mx = qs('.field-max', it),
+                            tr = qs('.field-tri', it);
                         setDim(d, t.value, d.value);
                         t.name = `rules[${i}][screening_type]`;
                         d.name = `rules[${i}][dimension]`;
@@ -199,12 +204,12 @@
 
                 function add(def) {
                     const node = tpl.content.cloneNode(true);
-                    const it = $('.rule-item', node);
-                    const t = $('.field-type', it);
-                    const d = $('.field-dimension', it);
-                    const mn = $('.field-min', it);
-                    const mx = $('.field-max', it);
-                    const tr = $('.field-tri', it);
+                    const it = qs('.rule-item', node);
+                    const t = qs('.field-type', it);
+                    const d = qs('.field-dimension', it);
+                    const mn = qs('.field-min', it);
+                    const mx = qs('.field-max', it);
+                    const tr = qs('.field-tri', it);
 
                     const df = Object.assign({
                         screening_type: 'epds',
@@ -228,7 +233,7 @@
                     const it = e.target.closest('.rule-item');
                     if (!it) return;
                     if (e.target.classList.contains('field-type')) {
-                        setDim($('.field-dimension', it), e.target.value, null);
+                        setDim(qs('.field-dimension', it), e.target.value, null);
                         renum();
                     }
                 });
@@ -240,8 +245,10 @@
                     }
                 });
 
-                // add default rule (opsional)
-                // add();
+                $('#body').summernote({
+                    height: 300,
+                });
+
             })();
         </script>
     </x-slot>

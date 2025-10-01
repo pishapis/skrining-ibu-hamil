@@ -37,7 +37,7 @@
 
 <footer class="custom-footer relative py-3">
     <div class="footer-text">
-        Copyright © 2025 Skrining Ibu Hamil
+        Copyright © 2025 Simkeswa
     </div>
     <div class="footer-logos absolute right-2">
         <!-- <img src="https://etera.co.id/assets/img/footer/LOGO DIGI-I (PUTIH).png" alt="Logo DIGI-I Putih"> -->

@@ -66,34 +66,33 @@ $wizardSteps = $isPuskesmas
         </div>
 
         <form method="POST" action="{{ route('pengguna.puskesmas.create') }}" x-on:submit="isSubmitting = true">
+            @method('POST')
             @csrf
-
             <!-- ===== STEP 1: AKUN ===== -->
             <section x-show="step===0" x-ref="s0" x-cloak>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Username</label>
-                        <input name="username" type="text" class="input-field" x-bind:required="step===0"
-                            value="{{ old('username') }}" autocomplete="username">
-                        <x-input-error :messages="$errors->get('username')" class="mt-2" />
+                        <input name="username_pus_create" type="text" class="input-field" x-bind:required="step===0"
+                            value="{{ old('username_pus_create') }}" autocomplete="username_pus_create">
+                        <x-input-error :messages="$errors->get('username_pus_create')" class="mt-2" />
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
-                        <input name="email" type="email" class="input-field" x-bind:required="step===0"
-                            value="{{ old('email') }}" autocomplete="email">
-                        <x-input-error :messages="$errors->get('email')" class="mt-2" />
+                        <input name="email_pus_create" type="email" class="input-field" x-bind:required="step===0"
+                            value="{{ old('email_pus_create') }}" autocomplete="email">
+                        <x-input-error :messages="$errors->get('email_pus_create')" class="mt-2" />
                     </div>
                     <div x-data="{ show: false }">
-                        <label for="password_puskesmas" class="block text-gray-700 text-sm font-medium mb-2">Password</label>
-
+                        <label for="password_pus_create" class="block text-gray-700 text-sm font-medium mb-2">Password</label>
                         <div class="relative">
                             <input
-                                id="password_puskesmas"
-                                name="password_puskesmas"
+                                id="password_pus_create"
+                                name="password_pus_create"
                                 :type="show ? 'text' : 'password'"
                                 class="input-field pr-10"
                                 required
-                                autocomplete="current-password">
+                                autocomplete="current-password_pus_create">
 
                             <button
                                 type="button"
@@ -118,21 +117,21 @@ $wizardSteps = $isPuskesmas
                             </button>
                         </div>
 
-                        @error('password_puskesmas')
-                        <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
+                        @error('password_pus_create')
+                            <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
                         @enderror
                     </div>
                     <div x-data="{ show: false }">
-                        <label for="password_confirmation_puskesmas" class="block text-gray-700 text-sm font-medium mb-2">Konfirmasi Password</label>
+                        <label for="password_confirmation_pus_create" class="block text-gray-700 text-sm font-medium mb-2">Konfirmasi Password</label>
 
                         <div class="relative">
                             <input
-                                id="password_confirmation_puskesmas"
-                                name="password_confirmation_puskesmas"
+                                id="password_confirmation_pus_create"
+                                name="password_confirmation_pus_create"
                                 :type="show ? 'text' : 'password'"
                                 class="input-field pr-10"
                                 required
-                                autocomplete="current-password">
+                                autocomplete="current-password_confirmation_pus_create">
 
                             <button
                                 type="button"
@@ -157,7 +156,7 @@ $wizardSteps = $isPuskesmas
                             </button>
                         </div>
 
-                        @error('password_confirmation_puskesmas')
+                        @error('password_confirmation_pus_create')
                         <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
                         @enderror
                     </div>
@@ -168,73 +167,84 @@ $wizardSteps = $isPuskesmas
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Nama Lengkap</label>
-                        <input name="name" type="text" class="input-field" value="{{ old('name') }}" required>
+                        <input name="name_pus_create" type="text" class="input-field" value="{{ old('name_pus_create') }}" x-bind:required="step===1">
+                        <x-input-error :messages="$errors->get('name_pus_create')" class="mt-2" />
                     </div>
 
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">NIK</label>
-                        <input name="nik" type="text" maxlength="16" class="input-field" value="{{ old('nik') }}" required>
+                        <input name="nik_pus_create" type="text" maxlength="16" class="input-field" value="{{ old('nik_pus_create') }}" x-bind:required="step===1">
+                        <x-input-error :messages="$errors->get('nik_pus_create')" class="mt-2" />
+
                     </div>
 
                     <div class="md:col-span-2">
                         <label class="block text-gray-700 text-sm font-medium mb-2">Alamat Rumah</label>
-                        <textarea name="alamat_rumah" class="input-field" rows="2">{{ old('alamat_rumah') }}</textarea>
+                        <textarea name="alamat_rumah_pus_create" class="input-field" rows="2">{{ old('alamat_rumah_pus_create') }}</textarea>
+                        <x-input-error :messages="$errors->get('alamat_rumah_pus_create')" class="mt-2" />
                     </div>
 
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Provinsi</label>
-                        <select name="prov_id" class="input-field" onchange="filterKota(this.value)">
+                        <select name="prov_id_pus_create" class="input-field" onchange="filterKota(this.value)" x-bind:required="step===1">
                             <option value="" selected disabled>Pilih Provinsi</option>
                             @foreach ($provinsis as $code => $name)
                             <option value="{{ $code }}">{{ $name }}</option>
                             @endforeach
                         </select>
+                        <x-input-error :messages="$errors->get('prov_id_pus_create')" class="mt-2" />
                     </div>
 
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Kabupaten/Kota</label>
-                        <select name="kota_id" class="input-field" onchange="filterKec(this.value)">
+                        <select name="kota_id_pus_create" class="input-field" onchange="filterKec(this.value)" x-bind:required="step===1">
                             <option value="" selected disabled>Pilih Kabupaten/Kota</option>
                         </select>
+                        <x-input-error :messages="$errors->get('kota_id_pus_create')" class="mt-2" />
                     </div>
 
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Kecamatan</label>
-                        <select name="kec_id" class="input-field" onchange="filterKel(this.value)">
+                        <select name="kec_id_pus_create" class="input-field" onchange="filterKel(this.value)" x-bind:required="step===1">
                             <option value="" selected disabled>Pilih Kecamatan</option>
                         </select>
+                        <x-input-error :messages="$errors->get('kec_id_pus_create')" class="mt-2" />
                     </div>
 
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Kelurahan</label>
-                        <select name="kelurahan_id" class="input-field">
+                        <select name="kelurahan_id_pus_create" class="input-field" x-bind:required="step===1">
                             <option value="" selected disabled>Pilih Kelurahan</option>
                         </select>
+                        <x-input-error :messages="$errors->get('kelurahan_id_pus_create')" class="mt-2" />
                     </div>
 
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">No Telp</label>
-                        <input name="no_telp" type="tel" class="input-field" value="{{ old('no_telp') }}">
+                        <input name="no_telp_pus_create" type="tel" class="input-field" value="{{ old('no_telp') }}" x-bind:required="step===1">
+                        <x-input-error :messages="$errors->get('no_telp_pus_create')" class="mt-2" />
                     </div>
 
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Puskesmas</label>
-                        <select name="puskesmas_id" class="input-field">
+                        <select name="puskesmas_id_pus_create" class="input-field" x-bind:required="step===1">
                             <option value="" selected disabled>Pilih Puskesmas</option>
                             @foreach ($puskesmas as $p)
                             <option value="{{ $p->id }}">{{ $p->nama }}</option>
                             @endforeach
                         </select>
+                        <x-input-error :messages="$errors->get('puskesmas_id_pus_create')" class="mt-2" />
                     </div>
 
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Jabatan</label>
-                        <select name="jabatan_id" class="input-field" required>
+                        <select name="jabatan_id_pus_create" class="input-field" x-bind:required="step===1">
                             <option value="" selected disabled>Pilih Jabatan</option>
                             @foreach ($daftarJabatan as $j)
                             <option value="{{ $j->id }}">{{ $j->nama }}</option>
                             @endforeach
                         </select>
+                        <x-input-error :messages="$errors->get('jabatan_id_pus_create')" class="mt-2" />
                     </div>
                 </div>
             </section>

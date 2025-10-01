@@ -18,6 +18,10 @@ class CheckRole
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+        
         if (Auth::check() && !in_array(Auth::user()->role_id, [1, 5])) {
             if(Auth::user()->role_id == 3 && Auth::user()->jabatan_id == 13){
                  return redirect()->route('gm-dashboard.index');

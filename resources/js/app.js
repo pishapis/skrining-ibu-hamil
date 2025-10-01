@@ -147,6 +147,8 @@ import ApexCharts from "apexcharts";
 
 window.ApexCharts = ApexCharts;
 
+// ---- Swup init ----
+
 const ORIGIN = window.location.origin;
 
 if (window.__swup) {
@@ -160,6 +162,7 @@ const INTERNAL = (sel) =>
     `${sel}:not([target]):not([download]):not([data-no-swup]):not([rel="external"])`;
 
 window.swup = new Swup({
+    cache: false,
     animateHistoryBrowsing: true, // animasi juga saat back/forward
     containers: ["#app-frame"],
     plugins: [
@@ -266,33 +269,27 @@ hydrateDashboard();
 
 window.filterKota = async function (provId) {
     try {
-        const requestData = {
-            provId: provId,
-        };
+        const requestData = { provId: provId };
         const routeUrl = "/get-kota"; 
         const fetchKota = new Fetch(routeUrl);
         fetchKota.method = "GET";
         fetchKota.bodyObject = requestData;
-        let optionValue = "";
+
         const hasil = await fetchKota.run();
         if (hasil.ack === "ok") { 
-            const kotaSelect = document.querySelector('select[name="kota_id"]');
-            const kotaSelectRujukan = document.querySelector('select[name="kota_id_rujukan"]');
-            const kotaSelectPuskesmas = document.querySelector('select[name="kota_id_puskesmas"]');
 
-            let option = `<option value="" selected disabled>Pilih Kabupaten/Kota</option>`;
+            const selectNames = ['kota_id', 'kota_id_rujukan', 'kota_id_puskesmas', 'kota_id_pus_create', 'kota_id_ibu_create'];
+            const selects = selectNames.map(name => document.querySelector(`select[name="${name}"]`)).filter(select => select);
+            const option = `<option value="" selected disabled>Pilih Kabupaten/Kota</option>`;
+            selects.forEach(select => select.innerHTML = option);
 
-            if(kotaSelect)kotaSelect.innerHTML = option;
-            if(kotaSelectRujukan)kotaSelectRujukan.innerHTML = option;
-            if(kotaSelectPuskesmas)kotaSelectPuskesmas.innerHTML = option;
-
+            let optionValue = "";
             hasil.data.forEach((kota) => {
-              optionValue = optionValue + `<option value="${kota.code}">${kota.name}</option>`;
-
-              if(kotaSelect)kotaSelect.innerHTML = optionValue
-              if(kotaSelectRujukan)kotaSelectRujukan.innerHTML = optionValue
-              if(kotaSelectPuskesmas)kotaSelectPuskesmas.innerHTML = optionValue
+                optionValue += `<option value="${kota.code}">${kota.name}</option>`;
             });
+
+            selects.forEach(select => select.innerHTML += optionValue);
+
         } else {
             ALERT(hasil.message, hasil.ack);
         }
@@ -313,23 +310,17 @@ window.filterKec = async function (kotaId) {
         let optionValue = "";
         const hasil = await fetchKec.run();
         if (hasil.ack === "ok") {
-            const kecSelect = document.querySelector('select[name="kec_id"]');
-            const kecSelectRujukan = document.querySelector('select[name="kec_id_rujukan"]');
-            const kecSelectPuskesmas = document.querySelector('select[name="kec_id_puskesmas"]');
+            const selectNames = ['kec_id', 'kec_id_rujukan', 'kec_id_puskesmas', 'kec_id_pus_create', 'kec_id_ibu_create'];
+            const selects = selectNames.map(name => document.querySelector(`select[name="${name}"]`)).filter(select => select);
+            const option = `<option value="" selected disabled>Pilih Kecamatan</option>`;
+            selects.forEach(select => select.innerHTML = option);
 
-            let option = `<option value="" selected disabled>Pilih Kecamatan</option>`;
-
-            if(kecSelect)kecSelect.innerHTML = option;
-            if(kecSelectRujukan)kecSelectRujukan.innerHTML = option;
-            if(kecSelectPuskesmas)kecSelectPuskesmas.innerHTML = option;
-
+            let optionValue = "";
             hasil.data.forEach((kec) => {
-              optionValue = optionValue + `<option value="${kec.code}">${kec.name}</option>`;
-
-              if(kecSelect)kecSelect.innerHTML = optionValue
-              if(kecSelectRujukan)kecSelectRujukan.innerHTML = optionValue
-              if(kecSelectPuskesmas)kecSelectPuskesmas.innerHTML = optionValue
+                optionValue += `<option value="${kec.code}">${kec.name}</option>`;
             });
+
+            selects.forEach(select => select.innerHTML += optionValue);
         } else {
             ALERT(hasil.message, hasil.ack);
         }
@@ -351,23 +342,29 @@ window.filterKel = async function (kecId) {
         if (hasil.ack === "ok") {
             const kelurahan = hasil.data.kelurahan;
             const puskesmas = hasil.data.puskesmas;
+            let optionKel = `<option value="" selected disabled>Pilih Kelurahan</option>`;
+            let optionPus = `<option value="" selected disabled>Pilih Puskesmas</option>`;
 
-            const kelSelect = document.querySelector(
-                'select[name="kelurahan_id"]'
-            );
-            kelSelect.innerHTML =
-                '<option value="" selected disabled>Pilih Kelurahan</option>';
+            const kelSelect = document.querySelector('select[name="kelurahan_id"]');
+            const kelSelectCreate = document.querySelector('select[name="kelurahan_id_pus_create"]');
+
+            if(kelSelect) kelSelect.innerHTML = optionKel;
+            if(kelSelectCreate) kelSelectCreate.innerHTML = optionKel;
             kelurahan.forEach((kel) => {
-                kelSelect.innerHTML += `<option value="${kel.code}">${kel.name}</option>`;
+                let valueOption = `<option value="${kel.code}">${kel.name}</option>`;
+                if(kelSelect) kelSelect.innerHTML += valueOption;
+                if(kelSelectCreate) kelSelectCreate.innerHTML += valueOption;
             });
 
-            const puskesmasSelect = document.querySelector(
-                'select[name="puskesmas_id"]'
-            );
-            puskesmasSelect.innerHTML =
-                '<option value="" selected disabled>Pilih Puskesmas</option>';
+            const is_wilayah = document.querySelector('input[name="is_luar_wilayah"]');
+            const puskesmasSelect = document.querySelector('select[name="puskesmas_id"]');
+            const puskesmasSelectCreate = document.querySelector('select[name="puskesmas_id_pus_create"]');
+            if(is_wilayah.checked) return false;
+            if(puskesmasSelect) puskesmasSelect.innerHTML = optionPus;
+            if(puskesmasSelectCreate) puskesmasSelectCreate.innerHTML = optionPus;
             puskesmas.forEach((puskesmas) => {
-                puskesmasSelect.innerHTML += `<option value="${puskesmas.id}">${puskesmas.nama}</option>`;
+                if(puskesmasSelect) puskesmasSelect.innerHTML += `<option value="${puskesmas.id}">${puskesmas.nama}</option>`;
+                if(puskesmasSelectCreate) puskesmasSelectCreate.innerHTML += `<option value="${puskesmas.id}">${puskesmas.nama}</option>`;
             });
         } else {
             ALERT(hasil.message, hasil.ack);
@@ -392,10 +389,9 @@ window.filterFaskesRujukan = async function () {
         const hasil = await fetchKel.run();
 
         if (hasil.ack === "ok") {
-            const faskesSelect = document.querySelector(
-                'select[name="faskes_rujukan_id"]'
-            );
-
+            const faskesSelect = document.querySelector('select[name="faskes_rujukan_id"]');
+            const is_wilayah = document.querySelector('input[name="is_luar_wilayah"]');
+            if(is_wilayah.checked) return false;
             // reset isi select
             faskesSelect.innerHTML = "";
             const defaultOpt = new Option("Pilih Rujukan", "", true, false);
@@ -426,14 +422,10 @@ window.filterFaskesRujukan = async function () {
     }
 }
 
-swup.hooks.on("page:view", () => {
-    hydrateDashboard();
-});
-swup.hooks.on('page:view', () => {
-  cleanupScrollLocks();
-});
-// swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} })
+swup.hooks.on("page:view", () => {hydrateDashboard();});
+swup.hooks.on('page:view', () => {cleanupScrollLocks();});
 swup.hooks.on("page:view", reinit);
 swup.hooks.on("visit:start", progressStart); // klik/link/submit dimulai
 swup.hooks.on("page:view", progressEnd); // halaman baru siap terlihat
 swup.hooks.on("visit:end", progressEnd); // fallback selesai
+swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} });

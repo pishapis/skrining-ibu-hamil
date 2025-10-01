@@ -11,9 +11,6 @@ use App\Models\Puskesmas;
 use App\Models\AnswerDass;
 use App\Models\AnswerEpds;
 use App\Models\SkriningDass;
-use App\Models\SkriningEpds;
-use App\Models\Kecamatan;
-use App\Models\Kelurahan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -26,10 +23,10 @@ class RiwayatSkriningController extends Controller
 
         $user  = Auth::user();
         $role  = $this->mapRoleFromUser($user);
-        $scope = $this->resolveScope($user, $role); // ['type' => self|facility|all, 'puskesmas_id' => ?]
+        $scope = $this->resolveScope($user, $role);
 
         // ======= Filters dari query string =======
-        $monthParam = trim((string) $request->input('month', '')); // 'YYYY-MM' atau ''
+        $monthParam = trim((string) $request->input('month', ''));
         $monthStart = $monthEnd = null;
         if ($monthParam) {
             try {
@@ -41,13 +38,16 @@ class RiwayatSkriningController extends Controller
             }
         }
 
-        // Superadmin boleh pilih puskesmas; admin facility pakai scope-nya sendiri
+        // Filter jenis skrining: 'kehamilan' atau 'umum' (untuk DASS-21)
+        $jenisParam = trim((string) $request->input('mode', ''));
+
+        // Superadmin boleh pilih puskesmas
         $puskesmasFilterId = null;
         if ($role === 'superadmin') {
             $puskesmasFilterId = $request->integer('puskesmas_id') ?: null;
         }
 
-        // Opsi bulan (12 bulan terakhir) untuk dropdown
+        // Opsi bulan (12 bulan terakhir)
         $monthOptions = [];
         for ($i = 0; $i < 12; $i++) {
             $d = Carbon::now()->subMonths($i);
@@ -67,7 +67,6 @@ class RiwayatSkriningController extends Controller
         $items = collect();
 
         if ($scope['type'] === 'self') {
-            // Data diri & usia hamil terbaru
             $dataDiri = DataDiri::where('user_id', $user->id)->firstOrFail();
 
             $riwayat = UsiaHamil::where('ibu_id', $dataDiri->id)
@@ -86,11 +85,9 @@ class RiwayatSkriningController extends Controller
                 ];
             }
 
-            // Ambil items untuk user ini (boleh pakai filter bulan kalau diisi)
-            $items = collect($this->itemsForSelf($dataDiri->id, $monthStart, $monthEnd, $usia_hamil));
+            $items = collect($this->itemsForSelf($dataDiri->id, $monthStart, $monthEnd, $jenisParam, $usia_hamil));
         } else {
-            // Admin facility / Superadmin → data sesuai scope + filter server-side
-            $items = collect($this->itemsForScope($scope, $puskesmasFilterId, $monthStart, $monthEnd));
+            $items = collect($this->itemsForScope($scope, $puskesmasFilterId, $monthStart, $monthEnd, $jenisParam));
         }
 
         // Urutkan terbaru
@@ -98,6 +95,7 @@ class RiwayatSkriningController extends Controller
 
         $filters = [
             'month'        => $monthParam,
+            'jenis'        => $jenisParam, // ubah dari 'mode' ke 'jenis'
             'puskesmas_id' => $puskesmasFilterId,
         ];
 
@@ -105,10 +103,15 @@ class RiwayatSkriningController extends Controller
         $answer_dass  = AnswerDass::all();
         $skrining_dass = SkriningDass::orderBy('id')->get();
 
+        // Export data dengan filter jenis
         $epds_export = HasilEpds::from('hasil_epds as he')
             ->leftJoin('data_diri as dd', 'dd.id', '=', 'he.ibu_id')
             ->leftJoin('indonesia_villages as kel', 'kel.code', '=', 'dd.kode_des')
             ->leftJoin('indonesia_districts as kec', 'kec.code', '=', 'dd.kode_kec')
+            ->leftJoin('indonesia_cities as kota', 'kota.code', '=', 'dd.kode_kab')
+            ->leftJoin('indonesia_provinces as prov', 'prov.code', '=', 'dd.kode_prov')
+            ->leftJoin('puskesmas as pusk', 'pusk.id', '=', 'dd.puskesmas_id')
+            ->leftJoin('fasilitas_kesehatan_rujukan as faskes', 'faskes.id', '=', 'dd.faskes_rujukan_id')
             ->when(
                 $scope['type'] === 'facility' && !empty($scope['puskesmas_id']),
                 fn($q) => $q->where('dd.puskesmas_id', $scope['puskesmas_id'])
@@ -124,6 +127,7 @@ class RiwayatSkriningController extends Controller
             ->where('he.status', 'submitted')
             ->orderBy('he.screening_date')
             ->get([
+                // Hasil EPDS fields
                 'he.id',
                 'he.ibu_id',
                 'he.epds_id',
@@ -134,19 +138,44 @@ class RiwayatSkriningController extends Controller
                 'he.session_token',
                 'he.submitted_at',
                 'he.batch_no',
+
+                // Data diri lengkap
                 'dd.nama as ibu_nama',
+                'dd.nik',
+                'dd.tempat_lahir',
+                'dd.tanggal_lahir',
+                'dd.pendidikan_terakhir',
+                'dd.pekerjaan',
+                'dd.agama',
+                'dd.golongan_darah',
                 'dd.alamat_rumah',
+                'dd.is_luar_wilayah',
+                'dd.no_telp',
+                'dd.no_jkn',
+
+                // Data wilayah
                 'kel.name as kelurahan_nama',
                 'kec.name as kecamatan_nama',
-                // RT/RW memang tidak ada di DataDiri saat ini → kirim kosong
+                'kota.name as kota_nama',
+                'prov.name as provinsi_nama',
+
+                // Data fasilitas kesehatan
+                'pusk.nama as puskesmas_nama',
+                'faskes.nama as faskes_rujukan_nama',
+
+                // RT/RW (akan di-extract dari alamat_rumah)
                 DB::raw('NULL as rt_rw'),
             ]);
 
-        // --- DASS rows untuk export: JOIN kelurahan/kecamatan ---
+        // DASS export dengan filter jenis (auto-detect dari data)
         $dass_export = HasilDass::from('hasil_dass as hd')
             ->leftJoin('data_diri as dd', 'dd.id', '=', 'hd.ibu_id')
             ->leftJoin('indonesia_villages as kel', 'kel.code', '=', 'dd.kode_des')
             ->leftJoin('indonesia_districts as kec', 'kec.code', '=', 'dd.kode_kec')
+            ->leftJoin('indonesia_cities as kota', 'kota.code', '=', 'dd.kode_kab')
+            ->leftJoin('indonesia_provinces as prov', 'prov.code', '=', 'dd.kode_prov')
+            ->leftJoin('puskesmas as pusk', 'pusk.id', '=', 'dd.puskesmas_id')
+            ->leftJoin('fasilitas_kesehatan_rujukan as faskes', 'faskes.id', '=', 'dd.faskes_rujukan_id')
             ->when(
                 $scope['type'] === 'facility' && !empty($scope['puskesmas_id']),
                 fn($q) => $q->where('dd.puskesmas_id', $scope['puskesmas_id'])
@@ -159,25 +188,59 @@ class RiwayatSkriningController extends Controller
                 $monthStart && $monthEnd,
                 fn($q) => $q->whereBetween('hd.screening_date', [$monthStart, $monthEnd])
             )
+            ->when(
+                $jenisParam === 'kehamilan',
+                fn($q) => $q->whereNotNull('hd.usia_hamil_id')->whereNotNull('hd.trimester')
+            )
+            ->when(
+                $jenisParam === 'umum',
+                fn($q) => $q->whereNull('hd.usia_hamil_id')->where('hd.mode', 'umum')
+            )
             ->where('hd.status', 'submitted')
             ->orderBy('hd.screening_date')
             ->get([
+                // Hasil DASS fields
                 'hd.id',
                 'hd.ibu_id',
                 'hd.dass_id',
                 'hd.answers_dass_id',
                 'hd.screening_date',
                 'hd.trimester',
+                'hd.mode',
+                'hd.periode',
                 'hd.total_depression',
                 'hd.total_anxiety',
                 'hd.total_stress',
                 'hd.session_token',
                 'hd.submitted_at',
                 'hd.batch_no',
+                'hd.usia_hamil_id', // untuk deteksi jenis
+
+                // Data diri lengkap
                 'dd.nama as ibu_nama',
+                'dd.nik',
+                'dd.tempat_lahir',
+                'dd.tanggal_lahir',
+                'dd.pendidikan_terakhir',
+                'dd.pekerjaan',
+                'dd.agama',
+                'dd.golongan_darah',
                 'dd.alamat_rumah',
+                'dd.is_luar_wilayah',
+                'dd.no_telp',
+                'dd.no_jkn',
+
+                // Data wilayah
                 'kel.name as kelurahan_nama',
                 'kec.name as kecamatan_nama',
+                'kota.name as kota_nama',
+                'prov.name as provinsi_nama',
+
+                // Data fasilitas kesehatan
+                'pusk.nama as puskesmas_nama',
+                'faskes.nama as faskes_rujukan_nama',
+
+                // RT/RW (akan di-extract dari alamat_rumah)
                 DB::raw('NULL as rt_rw'),
             ]);
 
@@ -198,269 +261,183 @@ class RiwayatSkriningController extends Controller
         ));
     }
 
-    // ===================== Items builder =====================
-
     /**
-     * Untuk user pribadi: ambil 1 baris final per session_token
-     * - EPDS: prioritaskan row ringkasan (answers_epds_id IS NULL), fallback MAX(id)
-     * - DASS: pakai MAX(id)
+     * Untuk user pribadi: auto-detect jenis DASS berdasarkan data
      */
-    private function itemsForSelf(int $ibuId, ?Carbon $start, ?Carbon $end, array $usia_hamil = []): array
+    private function itemsForSelf($ibuId, $monthStart, $monthEnd, $jenisParam, $usia_hamil)
     {
-        // EPDS — pick final row per session
-        $subE1 = HasilEpds::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
-            ->where('ibu_id', $ibuId)
-            ->where('status', 'submitted')
-            ->whereNotNull('session_token')
-            ->groupBy('session_token');
-
-        $subE2 = HasilEpds::from('hasil_epds as he1')
-            ->joinSub($subE1, 't', function ($j) {
-                $j->on('he1.session_token', '=', 't.session_token')
-                    ->on('he1.screening_date', '=', 't.max_date');
-            })
-            ->selectRaw('he1.session_token, COALESCE(MAX(CASE WHEN he1.answers_epds_id IS NULL THEN he1.id END), MAX(he1.id)) AS pick_id')
-            ->groupBy('he1.session_token');
-
-        $epds = HasilEpds::from('hasil_epds as he')
-            ->joinSub($subE2, 'p', function ($j) {
-                $j->on('he.session_token', '=', 'p.session_token')
-                    ->on('he.id', '=', 'p.pick_id');
-            })
-            ->where('he.ibu_id', $ibuId);
-
-        if ($start && $end) {
-            $epds->whereBetween('he.screening_date', [$start, $end]);
-        }
-
-        $epds = $epds->orderByDesc('he.screening_date')
-            ->get(['he.id', 'he.screening_date', 'he.trimester', 'he.total_score']);
-
-        // DASS — pick MAX(id) per session
-        $subD1 = HasilDass::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
-            ->where('ibu_id', $ibuId)
-            ->where('status', 'submitted')
-            ->whereNotNull('session_token')
-            ->groupBy('session_token');
-
-        $subD2 = HasilDass::from('hasil_dass as hd1')
-            ->joinSub($subD1, 't', function ($j) {
-                $j->on('hd1.session_token', '=', 't.session_token')
-                    ->on('hd1.screening_date', '=', 't.max_date');
-            })
-            ->selectRaw('hd1.session_token, MAX(hd1.id) AS pick_id')
-            ->groupBy('hd1.session_token');
-
-        $dass = HasilDass::from('hasil_dass as hd')
-            ->joinSub($subD2, 'p', function ($j) {
-                $j->on('hd.session_token', '=', 'p.session_token')
-                    ->on('hd.id', '=', 'p.pick_id');
-            })
-            ->where('hd.ibu_id', $ibuId);
-
-        if ($start && $end) {
-            $dass->whereBetween('hd.screening_date', [$start, $end]);
-        }
-
-        $dass = $dass->orderByDesc('hd.screening_date')
-            ->get(['hd.id', 'hd.screening_date', 'hd.trimester', 'hd.total_depression', 'hd.total_anxiety', 'hd.total_stress']);
-
-        // Map ke items
         $items = [];
 
-        foreach ($epds as $r) {
-            $dt = Carbon::parse($r->screening_date);
+        // EPDS (selalu kehamilan)
+        $epdsRows = HasilEpds::where('ibu_id', $ibuId)
+            ->where('status', 'submitted')
+            ->when($monthStart && $monthEnd, fn($q) => $q->whereBetween('screening_date', [$monthStart, $monthEnd]))
+            ->with(['answersEpds'])
+            ->orderBy('screening_date', 'desc')
+            ->get();
+
+        foreach ($epdsRows as $row) {
             $items[] = [
-                'id'         => $r->id,
-                'type'       => 'EPDS',
-                'date_iso'   => $dt->toDateString(),
-                'date_human' => $dt->translatedFormat('d M Y'),
-                'year'       => $dt->year,
-                'trimester'  => $r->trimester,
-                'scores'     => ['epds_total' => (int) ($r->total_score ?? 0)],
-                'usia_hamil' => $usia_hamil,
+                'id'          => $row->id,
+                'type'        => 'EPDS',
+                'jenis'       => 'kehamilan', // EPDS selalu kehamilan
+                'date_iso'    => $row->screening_date ?? $row->submitted_at ?? $row->created_at,
+                'date_human'  => optional($row->screening_date ?? $row->submitted_at)->translatedFormat('d M Y'),
+                'year'        => optional($row->screening_date ?? $row->submitted_at)->year,
+                'trimester'   => $row->trimester,
+                'usia_hamil'  => $usia_hamil,
+                'scores'      => ['epds_total' => $row->total_score],
+                'ibu'         => optional($row->ibu)->nama ?? '—',
             ];
         }
 
-        foreach ($dass as $r) {
-            $dt = Carbon::parse($r->screening_date);
+        // DASS - Auto detect berdasarkan model
+        $dassQuery = HasilDass::where('ibu_id', $ibuId)
+            ->where('status', 'submitted')
+            ->when($monthStart && $monthEnd, fn($q) => $q->whereBetween('screening_date', [$monthStart, $monthEnd]));
+
+        // Filter berdasarkan jenis yang dipilih
+        if ($jenisParam === 'kehamilan') {
+            $dassQuery->kehamilan(); // gunakan scope
+        } elseif ($jenisParam === 'umum') {
+            $dassQuery->umum(); // gunakan scope
+        }
+
+        $dassRows = $dassQuery->orderBy('screening_date', 'desc')->get();
+
+        foreach ($dassRows as $row) {
             $items[] = [
-                'id'         => $r->id,
-                'type'       => 'DASS-21',
-                'date_iso'   => $dt->toDateString(),
-                'date_human' => $dt->translatedFormat('d M Y'),
-                'year'       => $dt->year,
-                'trimester'  => $r->trimester,
-                'scores'     => [
-                    'dep'    => (int) ($r->total_depression ?? 0),
-                    'anx'    => (int) ($r->total_anxiety   ?? 0),
-                    'stress' => (int) ($r->total_stress    ?? 0),
+                'id'          => $row->id,
+                'type'        => 'DASS-21',
+                'jenis'       => $row->jenis_label, // menggunakan accessor
+                'mode'        => $row->mode, // 'kehamilan' atau 'umum'
+                'date_iso'    => $row->screening_date ?? $row->submitted_at ?? $row->created_at,
+                'date_human'  => optional($row->screening_date ?? $row->submitted_at)->translatedFormat('d M Y'),
+                'year'        => optional($row->screening_date ?? $row->submitted_at)->year,
+                'trimester'   => $row->trimester, // untuk kehamilan
+                'periode'     => $row->periode, // untuk umum
+                'usia_hamil'  => $row->is_kehamilan ? $usia_hamil : null,
+                'scores'      => [
+                    'dep'    => $row->total_depression,
+                    'anx'    => $row->total_anxiety,
+                    'stress' => $row->total_stress,
                 ],
-                'usia_hamil' => $usia_hamil,
+                'ibu'         => optional($row->ibu)->nama ?? '—',
             ];
         }
 
         return $items;
     }
 
-    /**
-     * Untuk admin/superadmin: scope fasilitas/all + filter puskesmas (superadmin)
-     */
-    private function itemsForScope(array $scope, ?int $puskesmasFilterId, ?Carbon $start, ?Carbon $end): array
+    private function itemsForScope($scope, $puskesmasFilterId, $monthStart, $monthEnd, $jenisParam)
     {
-        // EPDS — final row per session + join data_diri untuk scope
-        $subE1 = HasilEpds::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
-            ->where('status', 'submitted')
-            ->whereNotNull('session_token')
-            ->groupBy('session_token');
+        $items = [];
 
-        $subE2 = HasilEpds::from('hasil_epds as he1')
-            ->joinSub($subE1, 't', function ($j) {
-                $j->on('he1.session_token', '=', 't.session_token')
-                    ->on('he1.screening_date', '=', 't.max_date');
-            })
-            ->selectRaw('he1.session_token, COALESCE(MAX(CASE WHEN he1.answers_epds_id IS NULL THEN he1.id END), MAX(he1.id)) AS pick_id')
-            ->groupBy('he1.session_token');
-
-        $epds = HasilEpds::from('hasil_epds as he')
-            ->joinSub($subE2, 'p', function ($j) {
-                $j->on('he.session_token', '=', 'p.session_token')
-                    ->on('he.id', '=', 'p.pick_id');
-            })
-            ->join('data_diri as dd', 'dd.id', '=', 'he.ibu_id');
-
-        if ($scope['type'] === 'facility' && !empty($scope['puskesmas_id'])) {
-            $epds->where('dd.puskesmas_id', $scope['puskesmas_id']);
-        }
-        if ($scope['type'] === 'all' && $puskesmasFilterId) {
-            $epds->where('dd.puskesmas_id', $puskesmasFilterId);
-        }
-        if ($start && $end) {
-            $epds->whereBetween('he.screening_date', [$start, $end]);
-        }
-
-        $epds = $epds->orderByDesc('he.screening_date')
+        // EPDS Query
+        $epdsQuery = HasilEpds::from('hasil_epds as he')
+            ->leftJoin('data_diri as dd', 'dd.id', '=', 'he.ibu_id')
+            ->leftJoin('usia_hamil as uh', 'uh.id', '=', 'he.usia_hamil_id')
+            ->when($scope['type'] === 'facility', fn($q) => $q->where('dd.puskesmas_id', $scope['puskesmas_id']))
+            ->when($scope['type'] === 'all' && $puskesmasFilterId, fn($q) => $q->where('dd.puskesmas_id', $puskesmasFilterId))
+            ->when($monthStart && $monthEnd, fn($q) => $q->whereBetween('he.screening_date', [$monthStart, $monthEnd]))
+            ->where('he.status', 'submitted')
+            ->orderBy('he.screening_date', 'desc')
             ->get([
                 'he.id',
+                'he.ibu_id',
                 'he.screening_date',
+                'he.submitted_at',
+                'he.created_at',
                 'he.trimester',
                 'he.total_score',
-                'dd.id as ibu_id',
-                'dd.nama as ibu_nama' // <-- tambahkan ini
+                'dd.nama as ibu_nama',
+                'uh.hpht',
+                'uh.hpl'
             ]);
 
-        // DASS — final row per session + join data_diri
-        $subD1 = HasilDass::select('session_token', DB::raw('MAX(screening_date) AS max_date'))
-            ->where('status', 'submitted')
-            ->whereNotNull('session_token')
-            ->groupBy('session_token');
-
-        $subD2 = HasilDass::from('hasil_dass as hd1')
-            ->joinSub($subD1, 't', function ($j) {
-                $j->on('hd1.session_token', '=', 't.session_token')
-                    ->on('hd1.screening_date', '=', 't.max_date');
-            })
-            ->selectRaw('hd1.session_token, MAX(hd1.id) AS pick_id')
-            ->groupBy('hd1.session_token');
-
-        $dass = HasilDass::from('hasil_dass as hd')
-            ->joinSub($subD2, 'p', function ($j) {
-                $j->on('hd.session_token', '=', 'p.session_token')
-                    ->on('hd.id', '=', 'p.pick_id');
-            })
-            ->join('data_diri as dd', 'dd.id', '=', 'hd.ibu_id');
-
-        if ($scope['type'] === 'facility' && !empty($scope['puskesmas_id'])) {
-            $dass->where('dd.puskesmas_id', $scope['puskesmas_id']);
-        }
-        if ($scope['type'] === 'all' && $puskesmasFilterId) {
-            $dass->where('dd.puskesmas_id', $puskesmasFilterId);
-        }
-        if ($start && $end) {
-            $dass->whereBetween('hd.screening_date', [$start, $end]);
+        foreach ($epdsQuery as $row) {
+            $usiaMinggu = $row->hpht ? hitungUsiaKehamilanMinggu($row->hpht) : null;
+            $items[] = [
+                'id'         => $row->id,
+                'type'       => 'EPDS',
+                'jenis'      => 'kehamilan',
+                'date_iso'   => $row->screening_date ?? $row->submitted_at ?? $row->created_at,
+                'date_human' => optional($row->screening_date ?? $row->submitted_at)->translatedFormat('d M Y'),
+                'year'       => optional($row->screening_date ?? $row->submitted_at)->year,
+                'trimester'  => $row->trimester,
+                'usia_hamil' => $usiaMinggu ? [
+                    'hpht' => $row->hpht,
+                    'hpl' => $row->hpl,
+                    'usia_minggu' => $usiaMinggu,
+                    'keterangan' => hitungUsiaKehamilanString($row->hpht),
+                ] : null,
+                'scores'     => ['epds_total' => $row->total_score],
+                'ibu'        => $row->ibu_nama ?? '—',
+            ];
         }
 
-        $dass = $dass->orderByDesc('hd.screening_date')
+        // DASS Query dengan auto-detect
+        $dassQuery = HasilDass::from('hasil_dass as hd')
+            ->leftJoin('data_diri as dd', 'dd.id', '=', 'hd.ibu_id')
+            ->leftJoin('usia_hamil as uh', 'uh.id', '=', 'hd.usia_hamil_id')
+            ->when($scope['type'] === 'facility', fn($q) => $q->where('dd.puskesmas_id', $scope['puskesmas_id']))
+            ->when($scope['type'] === 'all' && $puskesmasFilterId, fn($q) => $q->where('dd.puskesmas_id', $puskesmasFilterId))
+            ->when($monthStart && $monthEnd, fn($q) => $q->whereBetween('hd.screening_date', [$monthStart, $monthEnd]))
+            ->when($jenisParam === 'kehamilan', fn($q) => $q->whereNotNull('hd.usia_hamil_id')->where('hd.mode', 'kehamilan'))
+            ->when($jenisParam === 'umum', fn($q) => $q->whereNull('hd.usia_hamil_id')->where('hd.mode', 'umum'))
+            ->where('hd.status', 'submitted')
+            ->orderBy('hd.screening_date', 'desc')
             ->get([
                 'hd.id',
+                'hd.ibu_id',
                 'hd.screening_date',
+                'hd.submitted_at',
+                'hd.created_at',
                 'hd.trimester',
+                'hd.mode',
+                'hd.periode',
+                'hd.usia_hamil_id',
                 'hd.total_depression',
                 'hd.total_anxiety',
                 'hd.total_stress',
-                'dd.id as ibu_id',
-                'dd.nama as ibu_nama' // <-- tambahkan ini
+                'dd.nama as ibu_nama',
+                'uh.hpht',
+                'uh.hpl'
             ]);
 
-        $ibuIds = $epds->pluck('ibu_id')->merge($dass->pluck('ibu_id'))->unique()->filter()->values();
+        foreach ($dassQuery as $row) {
+            $isKehamilan = !is_null($row->usia_hamil_id) && $row->mode === 'kehamilan';
+            $usiaMinggu = $isKehamilan && $row->hpht ? hitungUsiaKehamilanMinggu($row->hpht) : null;
 
-        $usiaMap = [];
-        if ($ibuIds->isNotEmpty()) {
-            $subUh = UsiaHamil::select('ibu_id', DB::raw('MAX(created_at) AS max_created'))
-                ->whereIn('ibu_id', $ibuIds)
-                ->whereNotNull('hpht')->whereNotNull('hpl')
-                ->groupBy('ibu_id');
-
-            $uhRows = UsiaHamil::from('usia_hamil as uh')
-                ->joinSub($subUh, 't', function ($j) {
-                    $j->on('uh.ibu_id', '=', 't.ibu_id')->on('uh.created_at', '=', 't.max_created');
-                })
-                ->get(['uh.ibu_id', 'uh.hpht', 'uh.hpl']);
-
-            foreach ($uhRows as $u) {
-                $minggu = hitungUsiaKehamilanMinggu($u->hpht);
-                $usiaMap[$u->ibu_id] = [
-                    'hpht'        => $u->hpht,
-                    'hpl'         => $u->hpl,
-                    'usia_minggu' => $minggu,
-                    'keterangan'  => hitungUsiaKehamilanString($u->hpht),
-                    'trimester'   => tentukanTrimester($minggu),
-                ];
-            }
-        }
-
-        // Map ke items (usia_hamil tidak disertakan di scope aggregate)
-        $items = [];
-
-        foreach ($epds as $r) {
-            $dt = Carbon::parse($r->screening_date);
             $items[] = [
-                'id'         => $r->id,
-                'type'       => 'EPDS',
-                'date_iso'   => $dt->toDateString(),
-                'date_human' => $dt->translatedFormat('d M Y'),
-                'year'       => $dt->year,
-                'trimester'  => $r->trimester,
-                'scores'     => ['epds_total' => (int) ($r->total_score ?? 0)],
-                'ibu'        => $r->ibu_nama,
-                'usia_hamil' => $usiaMap[$r->ibu_id] ?? null,
-            ];
-        }
-
-        foreach ($dass as $r) {
-            $dt = Carbon::parse($r->screening_date);
-            $items[] = [
-                'id'         => $r->id,
+                'id'         => $row->id,
                 'type'       => 'DASS-21',
-                'date_iso'   => $dt->toDateString(),
-                'date_human' => $dt->translatedFormat('d M Y'),
-                'year'       => $dt->year,
-                'trimester'  => $r->trimester,
+                'jenis'      => $isKehamilan ? 'kehamilan' : 'umum',
+                'mode'       => $row->mode,
+                'date_iso'   => $row->screening_date ?? $row->submitted_at ?? $row->created_at,
+                'date_human' => optional($row->screening_date ?? $row->submitted_at)->translatedFormat('d M Y'),
+                'year'       => optional($row->screening_date ?? $row->submitted_at)->year,
+                'trimester'  => $row->trimester,
+                'periode'    => $row->periode,
+                'usia_hamil' => $isKehamilan && $usiaMinggu ? [
+                    'hpht' => $row->hpht,
+                    'hpl' => $row->hpl,
+                    'usia_minggu' => $usiaMinggu,
+                    'keterangan' => hitungUsiaKehamilanString($row->hpht),
+                ] : null,
                 'scores'     => [
-                    'dep'    => (int) ($r->total_depression ?? 0),
-                    'anx'    => (int) ($r->total_anxiety   ?? 0),
-                    'stress' => (int) ($r->total_stress    ?? 0),
+                    'dep'    => $row->total_depression,
+                    'anx'    => $row->total_anxiety,
+                    'stress' => $row->total_stress,
                 ],
-                'ibu'        => $r->ibu_nama,
-                'usia_hamil' => $usiaMap[$r->ibu_id] ?? null,
+                'ibu'        => $row->ibu_nama ?? '—',
             ];
         }
 
         return $items;
     }
 
-    // ===================== Helpers: Role & Scope (copy dari Dashboard) =====================
-
+    // Helper methods tetap sama
     private function mapRoleFromUser($user): string
     {
         $rid = (int)($user->role_id ?? 1);

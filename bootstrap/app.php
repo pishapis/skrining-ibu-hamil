@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AnyRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'checkRole' => CheckRole::class,
             'is_superadmin' => IsSuperAdmin::class,
             'is_admin' => IsAdmin::class,
+            'anyrole' => AnyRole::class
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

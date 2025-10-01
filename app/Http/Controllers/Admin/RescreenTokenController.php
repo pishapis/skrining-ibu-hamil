@@ -26,7 +26,11 @@ class RescreenTokenController extends Controller
         $tokens = $q->paginate(20);
 
         // sederhana: dropdown Ibu untuk form
-        $ibus = DataDiri::orderBy('nama_lengkap')->select('id', 'nama_lengkap')->get();
+        $ibus = DataDiri::Ibu()
+            ->where('puskesmas_id', Auth::user()->puskesmas_id)
+            ->orderBy('nama')
+            ->select('id', 'nama')
+            ->get();
 
         return view('pages.admin.rescreens.index', compact('tokens', 'ibus'));
     }

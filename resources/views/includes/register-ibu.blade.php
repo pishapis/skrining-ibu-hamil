@@ -225,7 +225,18 @@ elseif (Str::contains($first, ['suami','anak'])) $errorStep = 3;
                             <option value="o">O</option>
                         </select>
                     </div>
-
+                </div>
+                <div class="my-4">
+                    <label for="is_luar_wilayah" class="text-gray-700 text-sm font-medium">
+                        Apakah Anda dari luar wilayah?
+                    </label>
+                    <div class="relative">
+                        <input type="checkbox" name="is_luar_wilayah" x-bind:required="step===1"
+                        class="h-5 w-5 text-teal-600 border-gray-300 rounded">
+                        <label class="text-gray-700 text-sm font-medium absolute top-1 ml-2">Ya</label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Provinsi</label>
                         <select name="prov_id" class="input-field" x-bind:required="step===1" onchange="filterKota(this.value)">
@@ -270,13 +281,18 @@ elseif (Str::contains($first, ['suami','anak'])) $errorStep = 3;
                         <label class="block text-gray-700 text-sm font-medium mb-2">Fasilitas Kesehatan Tk1</label>
                         <select name="puskesmas_id" class="input-field" onchange="filterFaskesRujukan(this.value)">
                             <option value="" selected disabled> Pilih Puskesmas</option>
-
+                            @foreach ($puskesmas as $item)
+                            <option value="{{ $item->id }}">{{ $item->nama }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Fasilitas Kesehatan Rujukan</label>
                         <select name="faskes_rujukan_id" class="input-field">
                             <option value="" selected disabled> Pilih Rujukan</option>
+                            @foreach ($faskes as $item)
+                            <option value="{{ $item->id }}">{{ $item->nama }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>

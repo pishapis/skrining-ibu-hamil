@@ -8,6 +8,7 @@ use App\Models\Kota;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\FasilitasKesehatan;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Puskesmas;
 use Illuminate\Http\Request;
 
@@ -68,8 +69,18 @@ class FilterAlamatController extends Controller
                 'kecId' => ['required'],
             ]);
 
+            $role = null;
+            if (Auth::check() == true){
+                $user = Auth::user();
+                $role = $user->role_id;
+            }
+
             $kelurahan = Kelurahan::where('district_code', $data['kecId'])->get();
-            $puskesmas = Puskesmas::where('kode_kec', $data['kecId'])->get();
+            $puskesmasQuery = Puskesmas::where('kode_kec', $data['kecId']);
+            if ($role == 2){
+                $puskesmasQuery->where('id', $user->puskesmas_id);
+            }
+            $puskesmas = $puskesmasQuery->orderBy('nama')->get();
 
             return response()->json([
                 'ack' => 'ok',

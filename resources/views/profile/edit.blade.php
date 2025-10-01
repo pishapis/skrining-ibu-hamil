@@ -1,6 +1,6 @@
 <x-app-layout>
     @section('page_title', 'Profile')
-    <x-slot name="title">Profile | Skrining Ibu Hamil</x-slot>
+    <x-slot name="title">Profile | Simkeswa</x-slot>
 
     <x-header-back>Profile</x-header-back>
     <div class="py-12">
