@@ -428,4 +428,4 @@ swup.hooks.on("page:view", reinit);
 swup.hooks.on("visit:start", progressStart); // klik/link/submit dimulai
 swup.hooks.on("page:view", progressEnd); // halaman baru siap terlihat
 swup.hooks.on("visit:end", progressEnd); // fallback selesai
-swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} });
+// swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} });
