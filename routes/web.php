@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Master\FaskesController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SkriningController;
+use App\Http\Controllers\SkriningPublikController;
 use App\Http\Controllers\RiwayatSkriningController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Filter\FilterAlamatController;
@@ -117,6 +118,22 @@ Route::controller(FilterAlamatController::class)->group(function () {
 });
 
 Route::get('/skrining-umum', [SkriningController::class, 'skrining_umum'])->name('skrining.umum');
+Route::post('/check-nik', [SkriningController::class, 'checkNik'])->name('check.nik');
+Route::post('/register-shortlink', [SkriningController::class, 'registerViaShortlink'])->name('register.shortlink');
+Route::prefix('umum')->name('umum.')->group(function () {
+     // EPDS
+    Route::get('/epds/start', [SkriningPublikController::class, 'startEpdsPublik'])->name('epds.start');
+    Route::post('/epds/save', [SkriningPublikController::class, 'saveEpdsAnswerPublik'])->name('epds.save');
+    Route::post('/epds/submit', [SkriningPublikController::class, 'submitEpdsPublik'])->name('epds.submit');
+    Route::post('/epds/cancel', [SkriningPublikController::class, 'cancelEpdsPublik'])->name('epds.cancel');
+    
+    // DASS
+    Route::get('/dass/start', [SkriningPublikController::class, 'startDassPublik'])->name('dass.start');
+    Route::post('/dass/save', [SkriningPublikController::class, 'saveDassAnswerPublik'])->name('dass.save');
+    Route::post('/dass/submit', [SkriningPublikController::class, 'submitDassPublik'])->name('dass.submit');
+    Route::post('/dass/cancel', [SkriningPublikController::class, 'cancelDassPublik'])->name('dass.cancel');
+});
+
 Route::middleware('auth')->group(function () {
     //skrining global 
     Route::post('/epds/cancel', [SkriningController::class, 'cancelEpds'])->name('epds.cancel');
@@ -144,6 +161,22 @@ Route::middleware('auth')->group(function () {
         Route::get('riwayat-skrining', 'index')->name('riwayat.skrining');
     });
 });
+
+// Di web.php (di luar group 'admin' atau paling atas)
+Route::get('/sw.js', function () {
+    return response()->file(public_path('sw.js'), [
+        'Content-Type' => 'application/javascript',
+    ]);
+});
+
+Route::get('/admin/sw.js', fn() =>
+    response()->file(public_path('sw.js'), ['Content-Type' => 'application/javascript'])
+);
+
+Route::get('/umum/sw.js', fn() =>
+    response()->file(public_path('sw.js'), ['Content-Type' => 'application/javascript'])
+);
+
 
 Route::get('/erlog', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index');
 require __DIR__ . '/auth.php';

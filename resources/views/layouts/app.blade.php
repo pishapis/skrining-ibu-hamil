@@ -58,8 +58,11 @@
     </div>
 
     <script data-swup-reload-script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(console.error);
+       if ('serviceWorker' in navigator) {
+        const swURL = new URL('/sw.js', location.origin).toString();
+        navigator.serviceWorker.register(swURL, { scope: '/admin/' })
+            .then(r => console.log('SW registered:', r.scope))
+            .catch(console.error);
         }
     </script>
 </body>

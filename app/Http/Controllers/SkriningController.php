@@ -73,6 +73,7 @@ class SkriningController extends Controller
         $fullUrl = $request->fullUrl();
         $parsedUrl = parse_url($fullUrl);
         if (!isset($parsedUrl['query'])) abort(404, "Halaman Tidak Ditemukan!");
+
         $shortCode = $parsedUrl['query'];
         $shortCodeValue = str_replace("=", "", $shortCode);
 
@@ -82,6 +83,9 @@ class SkriningController extends Controller
         if (!$generatedLink) {
             abort(404, "Halaman Tidak Ditemukan!");
         }
+
+        // Record access
+        $generatedLink->recordAccess();
 
         // Ambil puskesmas_id dan token dari original_url
         parse_str(parse_url($generatedLink->original_url, PHP_URL_QUERY), $params);
@@ -100,134 +104,159 @@ class SkriningController extends Controller
         if ($token !== $expectedToken) abort(404, "Halaman Tidak Ditemukan!");
 
         // Verifikasi apakah link sudah kadaluwarsa
-        $expiresAt = $generatedLink->expires_at;
-        if ($expiresAt && Carbon::parse($expiresAt)->isPast()) abort(404, "Halaman Tidak Ditemukan!");
+        if ($generatedLink->isExpired()) {
+            abort(404, "Link sudah kadaluwarsa!");
+        }
 
-        // Lanjutkan proses seperti biasa setelah validasi berhasil
-        $title = "Skrining EPDS";
+        // Data skrining
+        $title = "Skrining Kesehatan Mental";
         $answer_epds = AnswerEpds::with(['epds'])->get();
         $answer_dass = AnswerDass::all();
         $skrining_dass = SkriningDass::all();
-
-        // Cek apakah user sudah login
-        if (!Auth::check()) {
-            return view('pages.skrining.skrining-umum', compact('title', 'answer_epds', 'answer_dass', 'skrining_dass'));
-        }
-
-        // Pengolahan data diri dan usia hamil jika ada
-        $usia_hamil = null;
-        $needsDataDiri = false;
-
-        try {
-            $userId = Auth::id();
-            $dataDiri = DataDiri::where('user_id', $userId)->first();
-
-            if (
-                !$dataDiri ||
-                empty($dataDiri->nik) ||
-                empty($dataDiri->nama) ||
-                empty($dataDiri->no_jkn) ||
-                empty($dataDiri->kehamilan_ke)
-            ) {
-                $needsDataDiri = true;
-            }
-
-            if ($dataDiri && !$needsDataDiri) {
-                $riwayat = UsiaHamil::where('ibu_id', $dataDiri->id)
-                    ->whereNotNull('hpht')
-                    ->whereNotNull('hpl')
-                    ->latest('created_at')
-                    ->first();
-
-                if ($riwayat) {
-                    $usiaMinggu  = hitungUsiaKehamilanMinggu($riwayat->hpht);
-                    $trimester   = tentukanTrimester($usiaMinggu);
-                    $keterangan  = hitungUsiaKehamilanString($riwayat->hpht);
-
-                    $usia_hamil = [
-                        'id'          => $riwayat->id,
-                        'hpht'        => $riwayat->hpht,
-                        'hpl'         => $riwayat->hpl,
-                        'usia_minggu' => $usiaMinggu,
-                        'keterangan'  => $keterangan,
-                        'trimester'   => $trimester,
-                    ];
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Load usia_hamil gagal: ' . $e->getMessage());
-        }
 
         return view('pages.skrining.skrining-umum', compact(
             'title',
             'answer_epds',
             'answer_dass',
-            'usia_hamil',
             'skrining_dass',
-            'needsDataDiri',
-            'puskesmasId'
+            'puskesmasId',
+            'shortCodeValue'
         ));
     }
 
-    // Method untuk handle registrasi minimal guest
-    public function registerGuest(Request $request)
+    // Endpoint untuk cek NIK
+    public function checkNik(Request $request)
     {
         $request->validate([
-            'nik' => 'required|string|max:16|unique:data_diris,nik',
+            'nik' => 'required|string|size:16',
+            'puskesmas_id' => 'required|exists:puskesmas,id'
+        ]);
+
+        $dataDiri = DataDiri::where('nik', $request->nik)
+            ->where('puskesmas_id', $request->puskesmas_id)
+            ->first();
+
+        if ($dataDiri) {
+            // User sudah terdaftar
+            $usiaHamil = UsiaHamil::where('ibu_id', $dataDiri->id)
+                ->whereNotNull('hpht')
+                ->whereNotNull('hpl')
+                ->latest('created_at')
+                ->first();
+
+            $usia_hamil = null;
+            if ($usiaHamil) {
+                $usiaMinggu = hitungUsiaKehamilanMinggu($usiaHamil->hpht);
+                $trimester = tentukanTrimester($usiaMinggu);
+                $keterangan = hitungUsiaKehamilanString($usiaHamil->hpht);
+
+                $usia_hamil = [
+                    'id' => $usiaHamil->id,
+                    'hpht' => $usiaHamil->hpht,
+                    'hpl' => $usiaHamil->hpl,
+                    'usia_minggu' => $usiaMinggu,
+                    'keterangan' => $keterangan,
+                    'trimester' => $trimester,
+                ];
+            }
+
+            return response()->json([
+                'ack' => 'ok',
+                'message' => 'NIK ditemukan',
+                'data' => [
+                    'exists' => true,
+                    'ibu_id' => $dataDiri->id,
+                    'nama' => $dataDiri->nama,
+                    'usia_hamil' => $usia_hamil
+                ]
+            ]);
+        }
+
+        // User belum terdaftar
+        return response()->json([
+            'ack' => 'ok',
+            'message' => 'NIK tidak ditemukan',
+            'data' => [
+                'exists' => false
+            ]
+        ]);
+    }
+
+    // Endpoint untuk registrasi user baru via shortlink
+    public function registerViaShortlink(Request $request)
+    {
+        $request->validate([
+            'nik' => 'required|string|size:16|unique:data_diri,nik',
             'nama' => 'required|string|max:255',
-            'no_jkn' => 'required|string|max:20',
-            'kehamilan_ke' => 'required|integer|min:1',
-            'email' => 'nullable|email|unique:users,email',
-            'phone' => 'nullable|string|max:15'
+            'no_hp' => 'nullable|string|max:15',
+            'puskesmas_id' => 'required|exists:puskesmas,id',
+            'hpht' => 'nullable|date|before_or_equal:today'
         ]);
 
         DB::beginTransaction();
         try {
-            // Buat user baru dengan data minimal
+            // Buat user dummy untuk keperluan skrining
             $user = User::create([
-                'name' => $request->nama,
-                'email' => $request->email ?: $request->nik . '@guest.local',
-                'password' => Hash::make($request->nik), // temporary password = NIK
-                'email_verified_at' => now(), // auto verify untuk guest
-                'is_guest' => true // flag untuk guest user
-            ]);
-
-            RiwayatKesehatan::create([
-                'ibu_id'                    => $user->id,  // FK ke DataDiri
-                'kehamilan_ke'              => $request->kehamilan_ke,
-                'jml_anak_lahir_hidup'      => 0,
-                'riwayat_keguguran'         => 0,
-                'riwayat_penyakit'          => "",
+                'email' => 'temp_' . $request->nik . '@skrining.temp',
+                'password' => bcrypt(Str::random(32)),
+                'role_id' => 1, // role ibu
+                'puskesmas_id' => $request->puskesmas_id,
+                'is_temp' => true // flag untuk user sementara
             ]);
 
             // Buat data diri
-            DataDiri::create([
+            $dataDiri = DataDiri::create([
                 'user_id' => $user->id,
                 'nik' => $request->nik,
                 'nama' => $request->nama,
-                'no_jkn' => $request->no_jkn,
-                'no_hp' => $request->phone,
-                'created_at' => now(),
-                'updated_at' => now()
+                'no_telp' => $request->no_hp,
+                'puskesmas_id' => $request->puskesmas_id
             ]);
 
-            // Login otomatis
-            Auth::login($user);
+            // Jika ada HPHT, simpan usia hamil
+            $usia_hamil = null;
+            if ($request->hpht) {
+                $hpht = Carbon::parse($request->hpht);
+                $hpl = $hpht->copy()->addDays(280);
+
+                $usiaHamil = UsiaHamil::create([
+                    'ibu_id' => $dataDiri->id,
+                    'hpht' => $hpht,
+                    'hpl' => $hpl
+                ]);
+
+                $usiaMinggu = hitungUsiaKehamilanMinggu($hpht);
+                $trimester = tentukanTrimester($usiaMinggu);
+                $keterangan = hitungUsiaKehamilanString($hpht);
+
+                $usia_hamil = [
+                    'id' => $usiaHamil->id,
+                    'hpht' => $usiaHamil->hpht,
+                    'hpl' => $usiaHamil->hpl,
+                    'usia_minggu' => $usiaMinggu,
+                    'keterangan' => $keterangan,
+                    'trimester' => $trimester,
+                ];
+            }
 
             DB::commit();
 
             return response()->json([
                 'ack' => 'ok',
-                'message' => 'Registrasi berhasil! Sekarang Anda dapat melanjutkan skrining.',
-                'redirect' => route('skrining.umum')
+                'message' => 'Data berhasil disimpan',
+                'data' => [
+                    'ibu_id' => $dataDiri->id,
+                    'nama' => $dataDiri->nama,
+                    'usia_hamil' => $usia_hamil
+                ]
             ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Guest registration failed: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Error register via shortlink: ' . $e->getMessage());
 
             return response()->json([
-                'ack' => 'error',
-                'message' => 'Terjadi kesalahan saat registrasi. Silakan coba lagi.'
+                'ack' => 'bad',
+                'message' => 'Terjadi kesalahan saat menyimpan data'
             ], 500);
         }
     }
@@ -607,7 +636,7 @@ class SkriningController extends Controller
         try {
             $id = Auth::id();
             $data_diri = DataDiri::where('user_id', $id)->first();
-            
+
             if (!$data_diri) {
                 return response()->json(['ack' => 'bad', 'message' => 'Data diri pengguna tidak ditemukan', 'data' => null], 200);
             }
@@ -731,11 +760,10 @@ class SkriningController extends Controller
                 });
 
                 return response()->json($payload, 200);
-
             } else {
                 // MODE UMUM - berdasarkan periode bulanan
                 $periode = now()->format('Y-m');
-                
+
                 $submittedCount = HasilDass::where('ibu_id', $data_diri->id)
                     ->where('mode', 'umum')
                     ->where('periode', $periode)
@@ -795,7 +823,7 @@ class SkriningController extends Controller
                 // Buat session baru untuk umum
                 $payload = DB::transaction(function () use ($data_diri, $periode, $submittedCount, $activeToken) {
                     $now = now();
-                    
+
                     $session = HasilDass::create([
                         'ibu_id'            => $data_diri->id,
                         'mode'              => 'umum',
@@ -827,7 +855,6 @@ class SkriningController extends Controller
 
                 return response()->json($payload, 200);
             }
-
         } catch (\Exception $e) {
             Log::error("startDass error: " . $e->getMessage());
             return response()->json(['ack' => 'bad', 'message' => 'Gagal memulai skrining', 'data' => null], 200);
@@ -950,7 +977,7 @@ class SkriningController extends Controller
                 // Advice berdasarkan apakah kehamilan atau umum
                 $isPregnancy = !empty($seed->usia_hamil_id);
                 $advice = 'Hasil berada dalam rentang normal.';
-                
+
                 if ($levels['depression'] !== 'Normal' || $levels['anxiety'] !== 'Normal' || $levels['stress'] !== 'Normal') {
                     if ($isPregnancy) {
                         $advice = 'Pertimbangkan konsultasi dengan bidan, dokter kandungan, atau psikolog untuk mendapatkan dukungan yang tepat selama kehamilan.';
