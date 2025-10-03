@@ -38,16 +38,13 @@ class RiwayatSkriningController extends Controller
             }
         }
 
-        // Filter jenis skrining: 'kehamilan' atau 'umum' (untuk DASS-21)
         $jenisParam = trim((string) $request->input('mode', ''));
 
-        // Superadmin boleh pilih puskesmas
         $puskesmasFilterId = null;
         if ($role === 'superadmin') {
             $puskesmasFilterId = $request->integer('puskesmas_id') ?: null;
         }
 
-        // Opsi bulan (12 bulan terakhir)
         $monthOptions = [];
         for ($i = 0; $i < 12; $i++) {
             $d = Carbon::now()->subMonths($i);
@@ -57,18 +54,14 @@ class RiwayatSkriningController extends Controller
             ];
         }
 
-        // List puskesmas untuk superadmin
         $puskesmasList = ($role === 'superadmin')
             ? Puskesmas::orderBy('nama')->get(['id', 'nama'])
             : collect();
 
-        // ======= Build data sesuai scope =======
+        // ======= Usia hamil untuk user biasa =======
         $usia_hamil = [];
-        $items = collect();
-
         if ($scope['type'] === 'self') {
             $dataDiri = DataDiri::where('user_id', $user->id)->firstOrFail();
-
             $riwayat = UsiaHamil::where('ibu_id', $dataDiri->id)
                 ->whereNotNull('hpht')->whereNotNull('hpl')
                 ->latest('created_at')->first();
@@ -84,28 +77,20 @@ class RiwayatSkriningController extends Controller
                     'trimester'   => tentukanTrimester($usiaMinggu),
                 ];
             }
-
-            $items = collect($this->itemsForSelf($dataDiri->id, $monthStart, $monthEnd, $jenisParam, $usia_hamil));
-        } else {
-            $items = collect($this->itemsForScope($scope, $puskesmasFilterId, $monthStart, $monthEnd, $jenisParam));
         }
-
-        // Urutkan terbaru
-        $items = $items->sortByDesc('date_iso')->values();
-
-        $filters = [
-            'month'        => $monthParam,
-            'jenis'        => $jenisParam, // ubah dari 'mode' ke 'jenis'
-            'puskesmas_id' => $puskesmasFilterId,
-        ];
 
         $answer_epds  = AnswerEpds::with(['epds:id,pertanyaan'])->get();
         $answer_dass  = AnswerDass::all();
         $skrining_dass = SkriningDass::orderBy('id')->get();
 
-        // Export data dengan filter jenis
-        $epds_export = HasilEpds::from('hasil_epds as he')
+        // ======= EPDS: Ambil SEMUA baris detail (untuk export lengkap) =======
+        $epds_detail = HasilEpds::from('hasil_epds as he')
             ->leftJoin('data_diri as dd', 'dd.id', '=', 'he.ibu_id')
+            ->leftJoin('usia_hamil as uh', function ($join) {
+                $join->on('uh.ibu_id', '=', 'dd.id')
+                    ->whereNotNull('uh.hpht')
+                    ->whereNotNull('uh.hpl');
+            })
             ->leftJoin('indonesia_villages as kel', 'kel.code', '=', 'dd.kode_des')
             ->leftJoin('indonesia_districts as kec', 'kec.code', '=', 'dd.kode_kec')
             ->leftJoin('indonesia_cities as kota', 'kota.code', '=', 'dd.kode_kab')
@@ -121,25 +106,24 @@ class RiwayatSkriningController extends Controller
                 fn($q) => $q->where('dd.puskesmas_id', $puskesmasFilterId)
             )
             ->when(
+                $scope['type'] === 'self',
+                fn($q) => $q->where('dd.user_id', $user->id)
+            )
+            ->when(
                 $monthStart && $monthEnd,
                 fn($q) => $q->whereBetween('he.screening_date', [$monthStart, $monthEnd])
             )
+             ->when(
+                $jenisParam === 'kehamilan',
+                fn($q) => $q->whereNotNull('he.usia_hamil_id')->whereNotNull('he.trimester')
+            )
+            ->when(
+                $jenisParam === 'umum',
+                fn($q) => $q->whereNull('he.usia_hamil_id')->where('he.mode', 'umum')
+            )
             ->where('he.status', 'submitted')
-            ->orderBy('he.screening_date')
-            ->get([
-                // Hasil EPDS fields
-                'he.id',
-                'he.ibu_id',
-                'he.epds_id',
-                'he.answers_epds_id',
-                'he.screening_date',
-                'he.trimester',
-                'he.total_score',
-                'he.session_token',
-                'he.submitted_at',
-                'he.batch_no',
-
-                // Data diri lengkap
+            ->select(
+                'he.*',
                 'dd.nama as ibu_nama',
                 'dd.nik',
                 'dd.tempat_lahir',
@@ -152,24 +136,26 @@ class RiwayatSkriningController extends Controller
                 'dd.is_luar_wilayah',
                 'dd.no_telp',
                 'dd.no_jkn',
-
-                // Data wilayah
                 'kel.name as kelurahan_nama',
                 'kec.name as kecamatan_nama',
                 'kota.name as kota_nama',
                 'prov.name as provinsi_nama',
-
-                // Data fasilitas kesehatan
                 'pusk.nama as puskesmas_nama',
                 'faskes.nama as faskes_rujukan_nama',
+                'uh.hpht',
+                'uh.hpl'
+            )
+            ->orderBy('he.screening_date', 'desc')
+            ->get();
 
-                // RT/RW (akan di-extract dari alamat_rumah)
-                DB::raw('NULL as rt_rw'),
-            ]);
-
-        // DASS export dengan filter jenis (auto-detect dari data)
-        $dass_export = HasilDass::from('hasil_dass as hd')
+        // ======= DASS: Ambil SEMUA baris detail (untuk export lengkap) =======
+        $dass_detail = HasilDass::from('hasil_dass as hd')
             ->leftJoin('data_diri as dd', 'dd.id', '=', 'hd.ibu_id')
+            ->leftJoin('usia_hamil as uh', function ($join) {
+                $join->on('uh.ibu_id', '=', 'dd.id')
+                    ->whereNotNull('uh.hpht')
+                    ->whereNotNull('uh.hpl');
+            })
             ->leftJoin('indonesia_villages as kel', 'kel.code', '=', 'dd.kode_des')
             ->leftJoin('indonesia_districts as kec', 'kec.code', '=', 'dd.kode_kec')
             ->leftJoin('indonesia_cities as kota', 'kota.code', '=', 'dd.kode_kab')
@@ -183,6 +169,10 @@ class RiwayatSkriningController extends Controller
             ->when(
                 $scope['type'] === 'all' && !empty($puskesmasFilterId),
                 fn($q) => $q->where('dd.puskesmas_id', $puskesmasFilterId)
+            )
+            ->when(
+                $scope['type'] === 'self',
+                fn($q) => $q->where('dd.user_id', $user->id)
             )
             ->when(
                 $monthStart && $monthEnd,
@@ -197,26 +187,8 @@ class RiwayatSkriningController extends Controller
                 fn($q) => $q->whereNull('hd.usia_hamil_id')->where('hd.mode', 'umum')
             )
             ->where('hd.status', 'submitted')
-            ->orderBy('hd.screening_date')
-            ->get([
-                // Hasil DASS fields
-                'hd.id',
-                'hd.ibu_id',
-                'hd.dass_id',
-                'hd.answers_dass_id',
-                'hd.screening_date',
-                'hd.trimester',
-                'hd.mode',
-                'hd.periode',
-                'hd.total_depression',
-                'hd.total_anxiety',
-                'hd.total_stress',
-                'hd.session_token',
-                'hd.submitted_at',
-                'hd.batch_no',
-                'hd.usia_hamil_id', // untuk deteksi jenis
-
-                // Data diri lengkap
+            ->select(
+                'hd.*',
                 'dd.nama as ibu_nama',
                 'dd.nik',
                 'dd.tempat_lahir',
@@ -229,20 +201,98 @@ class RiwayatSkriningController extends Controller
                 'dd.is_luar_wilayah',
                 'dd.no_telp',
                 'dd.no_jkn',
-
-                // Data wilayah
                 'kel.name as kelurahan_nama',
                 'kec.name as kecamatan_nama',
                 'kota.name as kota_nama',
                 'prov.name as provinsi_nama',
-
-                // Data fasilitas kesehatan
                 'pusk.nama as puskesmas_nama',
                 'faskes.nama as faskes_rujukan_nama',
+                'uh.hpht',
+                'uh.hpl'
+            )
+            ->orderBy('hd.screening_date', 'desc')
+            ->get();
 
-                // RT/RW (akan di-extract dari alamat_rumah)
-                DB::raw('NULL as rt_rw'),
-            ]);
+        // ======= Group untuk tampilan (1 row per session) =======
+        $epds_grouped = $epds_detail->groupBy('session_token')->map(function ($group) use ($usia_hamil) {
+            $first = $group->first();
+            $dt = Carbon::parse($first->screening_date);
+
+            // Hitung usia kehamilan per ibu
+            $usia_ibu = [];
+            if ($first->hpht) {
+                $usiaMinggu = hitungUsiaKehamilanMinggu($first->hpht);
+                $usia_ibu = [
+                    'hpht' => $first->hpht,
+                    'hpl' => $first->hpl,
+                    'usia_minggu' => $usiaMinggu,
+                    'keterangan' => hitungUsiaKehamilanString($first->hpht),
+                    'trimester' => tentukanTrimester($usiaMinggu),
+                ];
+            }
+
+            return [
+                'id'         => $first->session_token,
+                'type'       => 'EPDS',
+                'date_iso'   => $dt->toDateString(),
+                'date_human' => $dt->translatedFormat('d M Y'),
+                'year'       => $dt->year,
+                'trimester'  => $first->trimester,
+                'scores'     => ['epds_total' => (int) ($first->total_score ?? 0)],
+                'usia_hamil' => !empty($usia_ibu) ? $usia_ibu : $usia_hamil,
+                'ibu'        => $first->ibu_nama ?? 'Tidak diketahui',
+            ];
+        });
+
+        $dass_grouped = $dass_detail->groupBy('session_token')->map(function ($group) use ($usia_hamil) {
+            $first = $group->first();
+            $dt = Carbon::parse($first->screening_date);
+
+            $jenis = 'umum';
+            if (!empty($first->usia_hamil_id) || !empty($first->trimester)) {
+                $jenis = 'kehamilan';
+            }
+
+            // Hitung usia kehamilan per ibu
+            $usia_ibu = [];
+            if ($first->hpht) {
+                $usiaMinggu = hitungUsiaKehamilanMinggu($first->hpht);
+                $usia_ibu = [
+                    'hpht' => $first->hpht,
+                    'hpl' => $first->hpl,
+                    'usia_minggu' => $usiaMinggu,
+                    'keterangan' => hitungUsiaKehamilanString($first->hpht),
+                    'trimester' => tentukanTrimester($usiaMinggu),
+                ];
+            }
+
+            return [
+                'id'         => $first->session_token,
+                'type'       => 'DASS-21',
+                'date_iso'   => $dt->toDateString(),
+                'date_human' => $dt->translatedFormat('d M Y'),
+                'year'       => $dt->year,
+                'trimester'  => $first->trimester,
+                'jenis'      => $jenis,
+                'scores'     => [
+                    'dep'    => (int) ($first->total_depression ?? 0),
+                    'anx'    => (int) ($first->total_anxiety   ?? 0),
+                    'stress' => (int) ($first->total_stress    ?? 0),
+                ],
+                'usia_hamil' => !empty($usia_ibu) ? $usia_ibu : $usia_hamil,
+                'ibu'        => $first->ibu_nama ?? 'Tidak diketahui',
+            ];
+        });
+
+        $items = $epds_grouped->merge($dass_grouped)->sortByDesc('date_iso')->values();
+
+        $filters = [
+            'month'        => $monthParam,
+            'jenis'        => $jenisParam,
+            'puskesmas_id' => $puskesmasFilterId,
+        ];
+
+        // dd($epds_detail);
 
         return view('pages.riwayat.index', compact(
             'title',
@@ -256,8 +306,8 @@ class RiwayatSkriningController extends Controller
             'answer_epds',
             'answer_dass',
             'skrining_dass',
-            'epds_export',
-            'dass_export'
+            'epds_detail',  // PENTING: Kirim detail lengkap untuk export
+            'dass_detail'   // PENTING: Kirim detail lengkap untuk export
         ));
     }
 
