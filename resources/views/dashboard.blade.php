@@ -54,6 +54,18 @@
                         </select>
                     </div>
 
+                    {{-- BARU: Mode EPDS --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mode EPDS</label>
+                        <select name="epds_mode" class="w-full rounded-lg border-gray-300 text-sm">
+                            @foreach($filterOptions['epdsModes'] as $val => $label)
+                                <option value="{{ $val }}" {{ $filters['epds_mode'] == $val ? 'selected' : '' }}>
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     {{-- Mode DASS --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Mode DASS</label>
@@ -66,7 +78,7 @@
                         </select>
                     </div>
 
-                    {{-- BARU: Filter Nama Ibu (hanya tampil untuk admin/superadmin) --}}
+                    {{-- Filter Nama Ibu (untuk admin/superadmin) --}}
                     @if($role === 'admin_clinician' || $role === 'superadmin')
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama</label>
@@ -96,7 +108,7 @@
                         </select>
                     </div>
 
-                    {{-- Tahun --}}
+                    {{-- Filter lainnya... --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
                         <select name="year" class="w-full rounded-lg border-gray-300 text-sm">
@@ -108,7 +120,6 @@
                         </select>
                     </div>
 
-                    {{-- Bulan --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
                         <select name="month" class="w-full rounded-lg border-gray-300 text-sm">
@@ -120,7 +131,6 @@
                         </select>
                     </div>
 
-                    {{-- Trimester/Fase --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Fase Kehamilan</label>
                         <select name="trimester" class="w-full rounded-lg border-gray-300 text-sm">
@@ -132,7 +142,6 @@
                         </select>
                     </div>
 
-                    {{-- Periode DASS Umum --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Periode DASS Umum</label>
                         <select name="periode" class="w-full rounded-lg border-gray-300 text-sm">
@@ -170,18 +179,23 @@
                             </span>
                         @endif
                         
-                        @if($filters['dass_mode'] !== 'all')
-                            <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                                Mode: {{ $filterOptions['dassModes'][$filters['dass_mode']] }}
+                        @if($filters['epds_mode'] !== 'all')
+                            <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                                EPDS: {{ $filterOptions['epdsModes'][$filters['epds_mode']] }}
                             </span>
                         @endif
                         
-                        {{-- BARU: Tampilkan filter nama ibu jika aktif --}}
+                        @if($filters['dass_mode'] !== 'all')
+                            <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                                DASS: {{ $filterOptions['dassModes'][$filters['dass_mode']] }}
+                            </span>
+                        @endif
+                        
                         @if(!empty($filters['ibu_name']))
-                            <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs flex items-center gap-1">
+                            <span class="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs flex items-center gap-1">
                                 Ibu: {{ Str::limit($filters['ibu_name'], 20) }}
                                 <a href="{{ route('dashboard', array_merge(request()->except('ibu_name'))) }}" 
-                                class="hover:text-purple-900">×</a>
+                                class="hover:text-amber-900">×</a>
                             </span>
                         @endif
                         
@@ -192,7 +206,7 @@
                         @endif
                         
                         @if($filters['month'] !== 'all')
-                            <span class="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs">
+                            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs">
                                 {{ $filterOptions['months'][$filters['month']] }}
                             </span>
                         @endif
@@ -438,6 +452,8 @@
                             $isEPDS = $it['type'] === 'EPDS';
                             $isDASS = $it['type'] === 'DASS-21';
                             $dassType = $isDASS ? ($it['jenis'] ?? 'umum') : null;
+                            $epdsMode = $isEPDS ? ($it['mode'] ?? 'kehamilan') : null;
+                            $isKehamilanMode = ($isEPDS && $epdsMode === 'kehamilan') || ($isDASS && $dassType === 'kehamilan');
                             
                             $badge = $isEPDS
                                 ? ((int)($it['scores']['total'] ?? 0) >= 13 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700')
@@ -457,12 +473,30 @@
                                     </div>
                                     <div class="mt-0.5 text-sm text-gray-700">
                                         @if($isEPDS)
-                                            <span class="text-xs px-2 py-0.5 rounded-full bg-pink-50 text-pink-600 mr-2">Kehamilan</span>
+                                            <span class="text-xs px-2 py-0.5 rounded-full {{ $epdsMode === 'kehamilan' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600' }} mr-2">
+                                                {{ $epdsMode === 'kehamilan' ? 'Kehamilan' : 'Umum' }}
+                                            </span>
+                                            
+                                            {{-- BARU: Tampilkan usia kehamilan jika mode kehamilan --}}
+                                            @if($isKehamilanMode && !empty($it['usia_kehamilan']))
+                                                <span class="text-xs text-gray-600 mr-2">
+                                                    ({{ $it['usia_kehamilan']['keterangan'] ?? '' }})
+                                                </span>
+                                            @endif
+                                            
                                             Skor EPDS: <span class="font-semibold">{{ (int)($it['scores']['total'] ?? 0) }}</span>
                                         @elseif($isDASS)
                                             <span class="text-xs px-2 py-0.5 rounded-full {{ $dassType === 'kehamilan' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600' }} mr-2">
                                                 {{ $dassType === 'kehamilan' ? 'Kehamilan' : 'Umum' }}
                                             </span>
+                                            
+                                            {{-- BARU: Tampilkan usia kehamilan jika mode kehamilan --}}
+                                            @if($isKehamilanMode && !empty($it['usia_kehamilan']))
+                                                <span class="text-xs text-gray-600 mr-2">
+                                                    ({{ $it['usia_kehamilan']['keterangan'] ?? '' }})
+                                                </span>
+                                            @endif
+                                            
                                             @if(isset($it['trimester']) && $dassType === 'kehamilan')
                                                 <span class="text-xs text-gray-500 mr-2">
                                                     {{ [
@@ -632,7 +666,8 @@
                             const epdsTrend = seed.epdsTrend || [];
                             const dassTrend = seed.dassTrend || [];
 
-                            if (document.getElementById('chart-epds-trend') && epdsTrend.length) {
+                            // EPDS Chart
+                            if (document.getElementById('chart-epds-trend') && epdsTrend.length > 0) {
                                 new ApexCharts(document.getElementById('chart-epds-trend'), {
                                     chart: { type: 'line', height: 280, toolbar: { show: false } },
                                     series: [{ name: 'Skor EPDS', data: epdsTrend.map(d => d.total) }],
@@ -642,21 +677,35 @@
                                     colors: ['#d946ef'],
                                     yaxis: { min: 0, max: 30 },
                                 }).render();
+                            } else if (document.getElementById('chart-epds-trend')) {
+                                document.getElementById('chart-epds-trend').innerHTML = 
+                                    '<div class="flex items-center justify-center h-full text-gray-500 text-sm">Belum ada data EPDS</div>';
                             }
 
-                            if (document.getElementById('chart-dass-trend') && dassTrend.length) {
+                            // DASS Chart - FIXED
+                            if (document.getElementById('chart-dass-trend') && dassTrend.length > 0) {
                                 new ApexCharts(document.getElementById('chart-dass-trend'), {
-                                    chart: { type: 'line', height: 280, toolbar: { show: false } },
+                                    chart: { 
+                                        type: 'line', 
+                                        height: 280, 
+                                        toolbar: { show: false },
+                                        animations: { enabled: true }
+                                    },
                                     series: [
-                                        { name: 'Depression', data: dassTrend.map(d => d.dep) },
-                                        { name: 'Anxiety', data: dassTrend.map(d => d.anx) },
-                                        { name: 'Stress', data: dassTrend.map(d => d.stress) }
+                                        { name: 'Depression', data: dassTrend.map(d => d.dep || 0) },
+                                        { name: 'Anxiety', data: dassTrend.map(d => d.anx || 0) },
+                                        { name: 'Stress', data: dassTrend.map(d => d.stress || 0) }
                                     ],
                                     xaxis: { categories: dassTrend.map(d => d.label) },
                                     stroke: { curve: 'smooth', width: 2 },
+                                    markers: { size: 4 },
                                     colors: ['#ef4444', '#f59e0b', '#8b5cf6'],
                                     yaxis: { min: 0 },
+                                    legend: { position: 'top' }
                                 }).render();
+                            } else if (document.getElementById('chart-dass-trend')) {
+                                document.getElementById('chart-dass-trend').innerHTML = 
+                                    '<div class="flex items-center justify-center h-full text-gray-500 text-sm">Belum ada data DASS-21</div>';
                             }
                         }
 
@@ -665,12 +714,14 @@
                             const stats = seed.facilityStats || {};
                             const tri = stats.trimester_counts || {};
 
+                            // Trimester Distribution
                             if (document.getElementById('chart-trimester')) {
                                 new ApexCharts(document.getElementById('chart-trimester'), {
                                     chart: { type: 'donut', height: 280 },
                                     labels: ['Trimester I', 'Trimester II', 'Trimester III', 'Pasca Melahirkan'],
                                     series: [tri.trimester_1 || 0, tri.trimester_2 || 0, tri.trimester_3 || 0, tri.pasca_hamil || 0],
                                     legend: { position: 'bottom' },
+                                    colors: ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899']
                                 }).render();
                             }
 
@@ -683,7 +734,7 @@
                                 if (it.type === 'EPDS') {
                                     if (!epdsByDate[it.date]) epdsByDate[it.date] = [];
                                     epdsByDate[it.date].push(it.scores.total || 0);
-                                } else {
+                                } else if (it.type === 'DASS-21') {
                                     if (!dassByDate[it.date]) dassByDate[it.date] = { dep: [], anx: [], stress: [] };
                                     dassByDate[it.date].dep.push(it.scores.dep || 0);
                                     dassByDate[it.date].anx.push(it.scores.anx || 0);
@@ -694,38 +745,65 @@
                             const epdsAvg = Object.keys(epdsByDate).sort().map(date => ({
                                 date,
                                 avg: epdsByDate[date].reduce((a,b) => a+b, 0) / epdsByDate[date].length
-                            }));
+                            })).slice(-10); // Last 10 data points
 
                             const dassAvg = Object.keys(dassByDate).sort().map(date => ({
                                 date,
                                 dep: dassByDate[date].dep.reduce((a,b) => a+b, 0) / dassByDate[date].dep.length,
                                 anx: dassByDate[date].anx.reduce((a,b) => a+b, 0) / dassByDate[date].anx.length,
                                 stress: dassByDate[date].stress.reduce((a,b) => a+b, 0) / dassByDate[date].stress.length
-                            }));
+                            })).slice(-10); // Last 10 data points
 
+                            // Admin EPDS Trend
                             if (document.getElementById('chart-admin-epds-trend') && epdsAvg.length) {
                                 new ApexCharts(document.getElementById('chart-admin-epds-trend'), {
                                     chart: { type: 'area', height: 320, toolbar: { show: false } },
-                                    series: [{ name: 'Rata-rata EPDS', data: epdsAvg.map(d => d.avg.toFixed(1)) }],
-                                    xaxis: { categories: epdsAvg.map(d => d.date) },
+                                    series: [{ name: 'Rata-rata EPDS', data: epdsAvg.map(d => parseFloat(d.avg.toFixed(1))) }],
+                                    xaxis: { 
+                                        categories: epdsAvg.map(d => {
+                                            const dt = new Date(d.date);
+                                            return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                                        })
+                                    },
                                     stroke: { curve: 'smooth', width: 2 },
-                                    fill: { type: 'gradient' },
+                                    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.3 } },
                                     colors: ['#d946ef'],
+                                    yaxis: { min: 0 },
                                 }).render();
+                            } else if (document.getElementById('chart-admin-epds-trend')) {
+                                document.getElementById('chart-admin-epds-trend').innerHTML = 
+                                    '<div class="flex items-center justify-center h-full text-gray-500 text-sm">Belum ada data untuk ditampilkan</div>';
                             }
 
+                            // Admin DASS Trend - FIXED
                             if (document.getElementById('chart-admin-dass-trend') && dassAvg.length) {
                                 new ApexCharts(document.getElementById('chart-admin-dass-trend'), {
-                                    chart: { type: 'line', height: 320, toolbar: { show: false } },
+                                    chart: { 
+                                        type: 'line', 
+                                        height: 320, 
+                                        toolbar: { show: false },
+                                        animations: { enabled: true }
+                                    },
                                     series: [
-                                        { name: 'Depression', data: dassAvg.map(d => d.dep.toFixed(1)) },
-                                        { name: 'Anxiety', data: dassAvg.map(d => d.anx.toFixed(1)) },
-                                        { name: 'Stress', data: dassAvg.map(d => d.stress.toFixed(1)) }
+                                        { name: 'Depression', data: dassAvg.map(d => parseFloat(d.dep.toFixed(1))) },
+                                        { name: 'Anxiety', data: dassAvg.map(d => parseFloat(d.anx.toFixed(1))) },
+                                        { name: 'Stress', data: dassAvg.map(d => parseFloat(d.stress.toFixed(1))) }
                                     ],
-                                    xaxis: { categories: dassAvg.map(d => d.date) },
+                                    xaxis: { 
+                                        categories: dassAvg.map(d => {
+                                            const dt = new Date(d.date);
+                                            return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                                        })
+                                    },
                                     stroke: { curve: 'smooth', width: 2 },
+                                    markers: { size: 4 },
                                     colors: ['#ef4444', '#f59e0b', '#8b5cf6'],
+                                    yaxis: { min: 0 },
+                                    legend: { position: 'top' }
                                 }).render();
+                            } else if (document.getElementById('chart-admin-dass-trend')) {
+                                document.getElementById('chart-admin-dass-trend').innerHTML = 
+                                    '<div class="flex items-center justify-center h-full text-gray-500 text-sm">Belum ada data untuk ditampilkan</div>';
                             }
                         }
                     });
@@ -737,36 +815,38 @@
                         const dotsWrap = document.getElementById('edu-dots');
                         const btns = document.querySelectorAll('.edu-nav');
 
-                        dotsWrap.innerHTML = '';
-                        cards.forEach((_, i) => {
-                            const b = document.createElement('button');
-                            b.type = 'button';
-                            b.className = 'h-2.5 w-2.5 rounded-full bg-gray-300 aria-selected:bg-teal-600 transition-colors';
-                            b.addEventListener('click', () => {
-                                const step = cards[0].getBoundingClientRect().width + 16;
-                                scroller.scrollTo({ left: i * step, behavior: 'smooth' });
+                        if (cards.length > 0) {
+                            dotsWrap.innerHTML = '';
+                            cards.forEach((_, i) => {
+                                const b = document.createElement('button');
+                                b.type = 'button';
+                                b.className = 'h-2.5 w-2.5 rounded-full bg-gray-300 aria-selected:bg-teal-600 transition-colors';
+                                b.addEventListener('click', () => {
+                                    const step = cards[0].getBoundingClientRect().width + 16;
+                                    scroller.scrollTo({ left: i * step, behavior: 'smooth' });
+                                });
+                                dotsWrap.appendChild(b);
                             });
-                            dotsWrap.appendChild(b);
-                        });
 
-                        function updateUI() {
-                            const step = cards[0].getBoundingClientRect().width + 16;
-                            const idx = Math.round(scroller.scrollLeft / step);
-                            dotsWrap.querySelectorAll('button').forEach((d, i) => {
-                                d.setAttribute('aria-selected', i === idx ? 'true' : 'false');
+                            function updateUI() {
+                                const step = cards[0].getBoundingClientRect().width + 16;
+                                const idx = Math.round(scroller.scrollLeft / step);
+                                dotsWrap.querySelectorAll('button').forEach((d, i) => {
+                                    d.setAttribute('aria-selected', i === idx ? 'true' : 'false');
+                                });
+                            }
+
+                            btns.forEach(b => {
+                                b.addEventListener('click', () => {
+                                    const dir = Number(b.dataset.dir || 1);
+                                    const step = cards[0].getBoundingClientRect().width + 16;
+                                    scroller.scrollBy({ left: dir * step, behavior: 'smooth' });
+                                });
                             });
+
+                            scroller.addEventListener('scroll', updateUI);
+                            updateUI();
                         }
-
-                        btns.forEach(b => {
-                            b.addEventListener('click', () => {
-                                const dir = Number(b.dataset.dir || 1);
-                                const step = cards[0].getBoundingClientRect().width + 16;
-                                scroller.scrollBy({ left: dir * step, behavior: 'smooth' });
-                            });
-                        });
-
-                        scroller.addEventListener('scroll', updateUI);
-                        updateUI();
                     }
                 })();
             </script>

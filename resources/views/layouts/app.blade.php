@@ -61,7 +61,7 @@
        if ('serviceWorker' in navigator) {
         const swURL = new URL('/sw.js', location.origin).toString();
         navigator.serviceWorker.register(swURL, { scope: '/admin/' })
-            .then(r => console.log('SW registered:', r.scope))
+            .then(r => "")
             .catch(console.error);
         }
     </script>
