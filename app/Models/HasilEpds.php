@@ -22,7 +22,9 @@ class HasilEpds extends Model
         'started_at',
         'submitted_at',
         'rescreen_token_id',
-        'batch_no'
+        'batch_no',
+        'mode',
+        'periode',
     ];
 
     public function rescreenToken()

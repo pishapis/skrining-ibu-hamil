@@ -84,8 +84,8 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">Jenis</label>
                     <select id="filter-kind" class="input-field w-full">
                         <option value="">Semua</option>
-                        <option value="kehamilan">EPDS</option>
-                        <option value="umum">DASS-21</option>
+                        <option value="EPDS">EPDS</option>
+                        <option value="DASS-21">DASS-21</option>
                     </select>
                 </div>
             </div>
@@ -156,10 +156,10 @@
 
         {{-- baru: data hasil untuk export --}}
         <script data-swup-reload-script type="application/json" id="hasil-epds">
-            {!!$epds_export->toJson(JSON_UNESCAPED_UNICODE) !!}
+            {!!$epds_detail->toJson(JSON_UNESCAPED_UNICODE) !!}
         </script>
         <script data-swup-reload-script type="application/json" id="hasil-dass">
-            {!!$dass_export->toJson(JSON_UNESCAPED_UNICODE) !!}
+            {!!$dass_detail->toJson(JSON_UNESCAPED_UNICODE) !!}
         </script>
 
         <script data-swup-reload-script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
@@ -451,7 +451,7 @@
                         const tr = el('tr', 'hover:bg-gray-50');
 
                         const tdDate = el('td', 'px-4 py-3');
-                        tdDate.textContent = row.date_human || '—';
+                        tdDate.textContent = format_tanggal(row.date_iso) || '—';
 
                         // Nama Ibu (hanya admin/superadmin)
                         let tdIbu = null;
@@ -539,7 +539,6 @@
                 }
 
                 function exportEpdsXlsx(epdsRows, answerEpds, fileName = 'Export_EPDS.xlsx') {
-                    console.log("🚀 ~ exportEpdsXlsx ~ epdsRows:", epdsRows)
                     if (!Array.isArray(epdsRows) || epdsRows.length === 0) {
                         alert('Data EPDS kosong.');
                         return;
@@ -743,6 +742,9 @@
                 }
 
                 function exportDassXlsx(dassRows, skriningDass, answerDass, fileName = 'Export_DASS.xlsx') {
+                    console.log("🚀 ~ exportDassXlsx ~ dassRows:", dassRows);
+                    console.log("🚀 ~ exportDassXlsx ~ answerDass:", answerDass);
+                    
                     if (!Array.isArray(dassRows) || dassRows.length === 0) {
                         alert('Data DASS kosong.');
                         return;
@@ -760,12 +762,20 @@
                         (m[k] = m[k] || []).push(x);
                         return m;
                     }, {});
+                    
+                    // Buat mapping answers_dass_id -> score untuk lookup cepat
+                    const answerScoreMap = {};
+                    (answerDass || []).forEach(a => {
+                        answerScoreMap[a.id] = num(a.score);
+                    });
+                    
                     const extractRTRW = (alamat = '') => {
                         if (!alamat) return '';
                         const re = /RT\s*0*(\d+)[^\dA-Za-z]+RW\s*0*(\d+)/i;
                         const m = alamat.match(re);
                         return m ? `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}` : '';
                     };
+                    
                     const styleTable = (ws, AOA, headerColorHex = 'B4A7D6') => {
                         const rows = AOA.length;
                         const cols = AOA[0]?.length || 0;
@@ -835,7 +845,7 @@
                     const sessions = Object.entries(grouped).map(([k, list]) => {
                         const any = list[0] || {};
                         
-                        // Expanded identity data - semua field dari data_diri
+                        // Expanded identity data
                         const ident = {
                             nama: safe(any.ibu_nama || any.nama_lengkap || any.nama, ''),
                             nik: safe(any.nik, ''),
@@ -874,11 +884,13 @@
 
                             const qid = Number(row.dass_id);
                             const ansId = row.answers_dass_id;
+                            
+                            // Ambil score dari mapping atau dari row.score
                             let score = row.score;
-                            if (score == null) {
-                                const meta = byQuestion.find(q => q.id === qid)?.scoreMap?.[ansId];
-                                if (meta != null) score = meta;
+                            if (score == null && ansId != null) {
+                                score = answerScoreMap[ansId] ?? 0;
                             }
+                            
                             answers[qid] = { ansId, score: num(score) };
                         }
 
@@ -905,7 +917,7 @@
                         };
                     });
 
-                    // ===== 3) Bangun AOA dengan header yang diperluas =====
+                    // ===== 3) Bangun AOA =====
                     const HEADERS_IDENT = [
                         'Tgl Skrining', 'Nama Lengkap', 'NIK', 'Tempat Lahir', 'Tanggal Lahir',
                         'Pendidikan Terakhir', 'Pekerjaan', 'Agama', 'Golongan Darah', 
@@ -919,7 +931,7 @@
                         [...HEADERS_IDENT, ...HEADERS_Q, ...HEADERS_TAIL]
                     ];
 
-                    // Severity labels (skor sudah ×2)
+                    // Severity labels
                     const dassDepLabel = (n) => (n <= 9 ? 'Normal' : n <= 13 ? 'Ringan' : n <= 20 ? 'Sedang' : n <= 27 ? 'Berat' : 'Sangat Berat');
                     const dassAnxLabel = (n) => (n <= 7 ? 'Normal' : n <= 9 ? 'Ringan' : n <= 14 ? 'Sedang' : n <= 19 ? 'Berat' : 'Sangat Berat');
                     const dassStrLabel = (n) => (n <= 14 ? 'Normal' : n <= 18 ? 'Ringan' : n <= 25 ? 'Sedang' : n <= 33 ? 'Berat' : 'Sangat Berat');
@@ -966,42 +978,20 @@
                     const wb = XLSX.utils.book_new();
                     const ws = XLSX.utils.aoa_to_sheet(AOA);
 
-                    // Lebar kolom yang disesuaikan
                     const questionColWidth = 48;
                     ws['!cols'] = [
-                        { wch: 18 }, // tgl
-                        { wch: 28 }, // nama
-                        { wch: 20 }, // nik
-                        { wch: 18 }, // tempat lahir
-                        { wch: 15 }, // tanggal lahir
-                        { wch: 18 }, // pendidikan
-                        { wch: 18 }, // pekerjaan
-                        { wch: 12 }, // agama
-                        { wch: 12 }, // golongan darah
-                        { wch: 35 }, // alamat rumah
-                        { wch: 12 }, // luar wilayah
-                        { wch: 20 }, // kelurahan
-                        { wch: 18 }, // kecamatan
-                        { wch: 20 }, // kota
-                        { wch: 18 }, // provinsi
-                        { wch: 12 }, // RT/RW
-                        { wch: 15 }, // no telp
-                        { wch: 20 }, // no jkn
-                        { wch: 25 }, // puskesmas
-                        { wch: 25 }, // faskes rujukan
+                        { wch: 18 }, { wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 15 },
+                        { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 35 },
+                        { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 18 },
+                        { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 25 },
                         ...byQuestion.map(() => ({ wch: questionColWidth })),
-                        { wch: 8 }, // DEP
-                        { wch: 8 }, // ANX
-                        { wch: 8 }, // STR
-                        { wch: 12 }, // KAT DEP
-                        { wch: 12 }, // KAT ANX
-                        { wch: 12 }, // KAT STR
+                        { wch: 8 }, { wch: 8 }, { wch: 8 },
+                        { wch: 12 }, { wch: 12 }, { wch: 12 },
                     ];
 
-                    // Header tinggi biar wrap nyaman
                     ws['!rows'] = [{ hpt: 120 }];
 
-                    // Format angka utk skor & total
+                    // Format angka
                     for (let r = 1; r < AOA.length; r++) {
                         const cStart = HEADERS_IDENT.length;
                         const cEndScores = cStart + byQuestion.length;
@@ -1009,7 +999,6 @@
                             const addr = XLSX.utils.encode_cell({ r, c });
                             if (ws[addr]) ws[addr].z = '0';
                         }
-                        // DEP, ANX, STR
                         for (let c = cEndScores + 1; c <= cEndScores + 3; c++) {
                             const addr = XLSX.utils.encode_cell({ r, c });
                             if (ws[addr]) ws[addr].z = '0';
