@@ -18,10 +18,12 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
+    # PENTING: Service Worker exceptions
     RewriteRule ^sw\.js$ - [L]
     RewriteRule ^admin/sw\.js$ - [L]
+
+    # PENTING: Send Requests To Front Controller (dengan kondisi!)
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
