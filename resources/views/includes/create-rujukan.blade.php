@@ -1,4 +1,4 @@
-<form x-cloak data-swup-form
+<form x-cloak
     {{-- :action="`{{ route('pengguna.ibu.update', '_ID_') }}`.replace('_ID_', S.form?.id ?? '' )" --}}
     action="#"
     method="POST"

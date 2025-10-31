@@ -1,4 +1,4 @@
-class Fetch {
+window.Fetch = class Fetch {
     constructor(urlString) {
         this.urlString = urlString;
         this.method = "GET";
@@ -1258,7 +1258,7 @@ function getJam(dateJam) {
     return formattedJam;
 }
 
-const levenshteinDistance = (s, t) => {
+window.levenshteinDistance = (s, t) => {
     // if (!s) {return;}
     // if (!t) {return;}
     // if (!s.length) return t.length;

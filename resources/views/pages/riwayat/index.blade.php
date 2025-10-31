@@ -142,29 +142,28 @@
     </div>
 
 
-    {{-- JS murni, dieksekusi ulang oleh @swup/scripts-plugin --}}
     <x-slot name="scripts">
-        <script data-swup-reload-script type="application/json" id="answer-epds">
+        <script type="application/json" id="answer-epds">
             {!!$answer_epds->toJson(JSON_UNESCAPED_UNICODE) !!}
         </script>
-        <script data-swup-reload-script type="application/json" id="answer-dass">
+        <script type="application/json" id="answer-dass">
             {!!$answer_dass->toJson(JSON_UNESCAPED_UNICODE) !!}
         </script>
-        <script data-swup-reload-script type="application/json" id="bank-dass">
+        <script type="application/json" id="bank-dass">
             {!!$skrining_dass->toJson(JSON_UNESCAPED_UNICODE) !!}
         </script>
 
         {{-- baru: data hasil untuk export --}}
-        <script data-swup-reload-script type="application/json" id="hasil-epds">
+        <script type="application/json" id="hasil-epds">
             {!!$epds_detail->toJson(JSON_UNESCAPED_UNICODE) !!}
         </script>
-        <script data-swup-reload-script type="application/json" id="hasil-dass">
+        <script type="application/json" id="hasil-dass">
             {!!$dass_detail->toJson(JSON_UNESCAPED_UNICODE) !!}
         </script>
 
-        <script data-swup-reload-script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
 
-        <script data-swup-reload-script>
+        <script>
             (function() {
 
                 const TRIMESTER_LABELS = {
@@ -517,12 +516,6 @@
                         tbody.appendChild(tr);
                     });
                 }
-
-                document.addEventListener('swup:visit:start', () => {
-                    try {
-                        window.swup?.cache?.clear();
-                    } catch (e) {}
-                });
 
                 function render() {
                     const list = filtered();
@@ -1122,20 +1115,7 @@
                 }
 
                 // jalan segera jika DOM sudah siap, kalau belum tunggu
-                if (document.readyState === 'loading') {
-                    document.addEventListener('swup:visit:start', () => {
-                        try {
-                            window.swup?.cache?.clear()
-                        } catch (e) {}
-                    });
-                    document.addEventListener('swup:contentReplaced', render);
-                    document.addEventListener('swup:page:view', render);
-                    document.addEventListener('DOMContentLoaded', render, {
-                        once: true
-                    });
-                } else {
-                    render();
-                }
+                document.addEventListener('turbo:load', render);
 
             })();
         </script>

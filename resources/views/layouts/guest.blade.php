@@ -30,25 +30,17 @@
 </head>
 
 <body class="bg-[#f0f4f8]">
-    <div id="swup-progress" aria-hidden="true"></div>
-    <div id="app-frame" data-swup-container>
+    <div id="app-frame">
         <div class="min-h-screen flex items-center justify-center p-4">
             <div id="swup" class="w-full max-w-sm md:max-w-md">
                 {{ $slot }}
             </div>
         </div>
-        <script data-swup-reload-script>
-            document.addEventListener('swup:ready', () => {
-                document.addEventListener('swup:visit:start', () => {
-                try { window.swup?.cache?.clear() } catch (e) {}
-                });
-            });
-        </script>
         {{ $scripts ?? '' }}
     </div>
 </body>
 
-<script data-swup-reload-script>
+<script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(console.error);
     }

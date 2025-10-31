@@ -83,7 +83,7 @@
         @if(in_array((int)(Auth::user()->role_id ?? 1), [2,3]))
         <div class="mt-6 flex gap-2">
             <a href="{{ route('edukasi.edit',$content->slug) }}" class="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">Edit</a>
-            <form action="{{ route('edukasi.destroy',$content->slug) }}" method="post" data-no-swup onsubmit="return confirm('Hapus konten?')">
+            <form action="{{ route('edukasi.destroy',$content->slug) }}" method="post" onsubmit="return confirm('Hapus konten?')">
                 @csrf @method('DELETE')
                 <button class="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm">Hapus</button>
             </form>
@@ -93,7 +93,7 @@
 
     @if($content->media->count() > 1)
         <x-slot name="scripts">
-            <script data-swup-reload-script>
+            <script>
                 (function() {
                     const wrap = document.getElementById('slides');
                     if (!wrap) return;

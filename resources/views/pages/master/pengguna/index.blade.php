@@ -181,7 +181,7 @@
             x-data="{ get S(){ return $store.editUser ?? { type:'ibu', form:{} } } }">
 
             {{-- ========== FORM IBU ========== --}}
-            <form x-show="S.type === 'ibu'" x-cloak data-swup-form 
+            <form x-show="S.type === 'ibu'" x-cloak 
                 :action="`{{ route('pengguna.ibu.update', '_ID_') }}`.replace('_ID_', S.form?.id ?? '')"
                 method="POST"
                 class="space-y-4">
@@ -358,7 +358,7 @@
             </form>
 
             {{-- ========== FORM PUSKESMAS ========== --}}
-            <form x-show="S.type === 'puskesmas'" x-cloak data-swup-form
+            <form x-show="S.type === 'puskesmas'" x-cloak
                 :action="`{{ route('pengguna.puskesmas.update', '_ID_') }}`.replace('_ID_', S.form?.id ?? '')"
                 method="POST"
                 class="space-y-4">
@@ -470,7 +470,7 @@
 
     {{-- ===================== SCRIPTS ===================== --}}
     <x-slot name="scripts">
-        <script data-swup-reload-script>
+        <script>
             // ========== Alpine Global Store + Open/Close Modal ==========
             (function() {
                 const defaults = () => ({
@@ -678,12 +678,6 @@
                 window.filterKecs = filterKecs;
                 window.filterKels = filterKels;
                 window.filterFaskesRujukans = filterFaskesRujukans;
-
-                document.addEventListener('swup:visit:start', () => {
-                    try {
-                        window.swup?.cache?.clear()
-                    } catch (e) {}
-                });
             })();
         </script>
 

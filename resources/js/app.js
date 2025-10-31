@@ -1,5 +1,13 @@
 import "./bootstrap";
 
+// --- Turbo ---
+import * as Turbo from '@hotwired/turbo';
+window.Turbo = Turbo;
+
+import Quill from 'quill';
+import 'quill/dist/quill.snow.css';
+window.Quill = Quill;
+
 // --- Alpine ---
 import Alpine from "alpinejs";
 window.Alpine = Alpine;
@@ -136,86 +144,54 @@ window.updateWizard = function () {
 
 Alpine.start();
 
-// --- Swup + Plugins ---
-import Swup from "swup";
-import FormsPlugin from "@swup/forms-plugin";
-import ScrollPlugin from "@swup/scroll-plugin";
-import HeadPlugin from "@swup/head-plugin";
-import PreloadPlugin from "@swup/preload-plugin";
-import ScriptsPlugin from "@swup/scripts-plugin";
+// --- ApexCharts ---
 import ApexCharts from "apexcharts";
-
 window.ApexCharts = ApexCharts;
 
-// ---- Swup init ----
+// ---- Helper Functions ----
 
-const ORIGIN = window.location.origin;
-
-if (window.__swup) {
+function readSeed(id = "dashboard-seed") {
+    const el = document.getElementById(id);
+    if (!el) return null;
     try {
-        window.__swup.destroy();
-    } catch {}
-    window.__swup = null;
+        return JSON.parse(el.textContent || "{}");
+    } catch {
+        return null;
+    }
 }
 
-const INTERNAL = (sel) =>
-    `${sel}:not([target]):not([download]):not([data-no-swup]):not([rel="external"])`;
+function cleanupScrollLocks() {
+    const unlockClasses = [
+        'overflow-hidden', 'overflow-y-hidden', 'overflow-x-hidden',
+        'fixed', 'is-changing', 'is-animating'
+    ];
+    unlockClasses.forEach(c => {
+        document.documentElement.classList.remove(c);
+        document.body.classList.remove(c);
+    });
 
-window.swup = new Swup({
-    cache: false,
-    animateHistoryBrowsing: true, // animasi juga saat back/forward
-    containers: ["#app-frame"],
-    plugins: [
-        new FormsPlugin({
-            formSelector: [
-                "form:not([target])",
-                ":not([download])",
-                ":not([data-no-swup])",
-                ':not([enctype="multipart/form-data"])',
-            ].join(""),
-        }),
-        new ScrollPlugin({ animateScroll: true }),
-        new HeadPlugin({
-            persistTags: (tag) => {
-                const src = tag.getAttribute?.("src") || "";
-                const href = tag.getAttribute?.("href") || "";
-                return (
-                    src.includes("/@vite/client") ||
-                    href.includes("/@vite/client") ||
-                    src.includes("/build/") ||
-                    href.includes("/build/") ||
-                    tag.getAttribute?.("rel") === "modulepreload"
-                );
-            },
-            awaitAssets: true, // biar CSS/JS siap sebelum animasi masuk
-        }),
-        new PreloadPlugin({ preloadVisibleLinks: true, throttle: 5 }),
-        new ScriptsPlugin({ head: false }),
-    ],
-    linkSelector: [
-        INTERNAL(`a[href^="${ORIGIN}"]`), // absolute internal
-        INTERNAL('a[href^="/"]'), // relative internal
-    ].join(", "),
-});
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+}
 
-window.__swup = swup;
+function hydrateDashboard() {
+    const seed = readSeed();
+    if (!seed) return;
+    if (typeof window.initAll === "function") {
+        try {
+            window.initAll(seed.epdsTrend || []);
+        } catch {}
+    }
+}
 
-// Re-init Alpine setelah konten baru dirender
-const reinit = () => {
-    const el = document.getElementById("app-frame");
-    if (!el || !window.Alpine) return;
-    requestAnimationFrame(() => window.Alpine.initTree(el));
-};
-
-// ---- Progress bar sederhana (mirip Livewire) ----
-const bar = document.getElementById("swup-progress");
+// ---- Progress Bar ----
+const bar = document.getElementById("turbo-progress");
 
 const progressStart = () => {
     if (!bar) return;
     bar.style.transition = "none";
     bar.style.width = "0%";
     bar.style.opacity = "1";
-    // biar animasi width berjalan
     requestAnimationFrame(() => {
         bar.style.transition = "width 1.2s ease, opacity .2s ease";
         bar.style.width = "80%";
@@ -231,53 +207,18 @@ const progressEnd = () => {
     }, 200);
 };
 
-function readSeed(id = "dashboard-seed") {
-    const el = document.getElementById(id);
-    if (!el) return null;
-    try {
-        return JSON.parse(el.textContent || "{}");
-    } catch {
-        return null;
-    }
-}
-
-function cleanupScrollLocks() {
-  const unlockClasses = [
-    'overflow-hidden', 'overflow-y-hidden', 'overflow-x-hidden',
-    'fixed', 'is-changing', 'is-animating' // kalau CSS kamu pakai ini untuk lock
-  ];
-  unlockClasses.forEach(c => {
-    document.documentElement.classList.remove(c);
-    document.body.classList.remove(c);
-  });
-
-  // Pastikan tidak ada style inline yang mengunci
-  document.documentElement.style.overflow = '';
-  document.body.style.overflow = '';
-}
-
-function hydrateDashboard() {
-    const seed = readSeed();
-    if (!seed) return;
-    if (typeof window.initAll === "function") {
-        try {
-            window.initAll(seed.epdsTrend || []);
-        } catch {}
-    } 
-}
-hydrateDashboard();
+// ---- Filter Functions ----
 
 window.filterKota = async function (provId) {
     try {
         const requestData = { provId: provId };
-        const routeUrl = "/get-kota"; 
+        const routeUrl = "/get-kota";
         const fetchKota = new Fetch(routeUrl);
         fetchKota.method = "GET";
         fetchKota.bodyObject = requestData;
 
         const hasil = await fetchKota.run();
-        if (hasil.ack === "ok") { 
-
+        if (hasil.ack === "ok") {
             const selectNames = ['kota_id', 'kota_id_rujukan', 'kota_id_puskesmas', 'kota_id_pus_create', 'kota_id_ibu_create'];
             const selects = selectNames.map(name => document.querySelector(`select[name="${name}"]`)).filter(select => select);
             const option = `<option value="" selected disabled>Pilih Kabupaten/Kota</option>`;
@@ -289,7 +230,6 @@ window.filterKota = async function (provId) {
             });
 
             selects.forEach(select => select.innerHTML += optionValue);
-
         } else {
             ALERT(hasil.message, hasil.ack);
         }
@@ -300,14 +240,11 @@ window.filterKota = async function (provId) {
 
 window.filterKec = async function (kotaId) {
     try {
-        const requestData = {
-            kotaId: kotaId,
-        };
+        const requestData = { kotaId: kotaId };
         const routeUrl = "/get-kecamatan";
         const fetchKec = new Fetch(routeUrl);
         fetchKec.method = "GET";
         fetchKec.bodyObject = requestData;
-        let optionValue = "";
         const hasil = await fetchKec.run();
         if (hasil.ack === "ok") {
             const selectNames = ['kec_id', 'kec_id_rujukan', 'kec_id_puskesmas', 'kec_id_pus_create', 'kec_id_ibu_create'];
@@ -331,9 +268,7 @@ window.filterKec = async function (kotaId) {
 
 window.filterKel = async function (kecId) {
     try {
-        const requestData = {
-            kecId: kecId,
-        };
+        const requestData = { kecId: kecId };
         const routeUrl = "/get-desa";
         const fetchKel = new Fetch(routeUrl);
         fetchKel.method = "GET";
@@ -348,23 +283,23 @@ window.filterKel = async function (kecId) {
             const kelSelect = document.querySelector('select[name="kelurahan_id"]');
             const kelSelectCreate = document.querySelector('select[name="kelurahan_id_pus_create"]');
 
-            if(kelSelect) kelSelect.innerHTML = optionKel;
-            if(kelSelectCreate) kelSelectCreate.innerHTML = optionKel;
+            if (kelSelect) kelSelect.innerHTML = optionKel;
+            if (kelSelectCreate) kelSelectCreate.innerHTML = optionKel;
             kelurahan.forEach((kel) => {
                 let valueOption = `<option value="${kel.code}">${kel.name}</option>`;
-                if(kelSelect) kelSelect.innerHTML += valueOption;
-                if(kelSelectCreate) kelSelectCreate.innerHTML += valueOption;
+                if (kelSelect) kelSelect.innerHTML += valueOption;
+                if (kelSelectCreate) kelSelectCreate.innerHTML += valueOption;
             });
 
             const is_wilayah = document.querySelector('input[name="is_luar_wilayah"]');
             const puskesmasSelect = document.querySelector('select[name="puskesmas_id"]');
             const puskesmasSelectCreate = document.querySelector('select[name="puskesmas_id_pus_create"]');
-            if(is_wilayah.checked) return false;
-            if(puskesmasSelect) puskesmasSelect.innerHTML = optionPus;
-            if(puskesmasSelectCreate) puskesmasSelectCreate.innerHTML = optionPus;
+            if (is_wilayah.checked) return false;
+            if (puskesmasSelect) puskesmasSelect.innerHTML = optionPus;
+            if (puskesmasSelectCreate) puskesmasSelectCreate.innerHTML = optionPus;
             puskesmas.forEach((puskesmas) => {
-                if(puskesmasSelect) puskesmasSelect.innerHTML += `<option value="${puskesmas.id}">${puskesmas.nama}</option>`;
-                if(puskesmasSelectCreate) puskesmasSelectCreate.innerHTML += `<option value="${puskesmas.id}">${puskesmas.nama}</option>`;
+                if (puskesmasSelect) puskesmasSelect.innerHTML += `<option value="${puskesmas.id}">${puskesmas.nama}</option>`;
+                if (puskesmasSelectCreate) puskesmasSelectCreate.innerHTML += `<option value="${puskesmas.id}">${puskesmas.nama}</option>`;
             });
         } else {
             ALERT(hasil.message, hasil.ack);
@@ -377,38 +312,31 @@ window.filterKel = async function (kecId) {
 window.filterFaskesRujukan = async function () {
     try {
         const kota = document.querySelector('select[name="kota_id"]').value;
-        const requestData = {
-            kota_id: kota,
-        };
-
+        const requestData = { kota_id: kota };
         const routeUrl = "/get-faskes";
         const fetchKel = new Fetch(routeUrl);
         fetchKel.method = "GET";
         fetchKel.bodyObject = requestData;
-
         const hasil = await fetchKel.run();
 
         if (hasil.ack === "ok") {
             const faskesSelect = document.querySelector('select[name="faskes_rujukan_id"]');
             const is_wilayah = document.querySelector('input[name="is_luar_wilayah"]');
-            if(is_wilayah.checked) return false;
-            // reset isi select
+            if (is_wilayah.checked) return false;
+            
             faskesSelect.innerHTML = "";
             const defaultOpt = new Option("Pilih Rujukan", "", true, false);
             defaultOpt.disabled = true;
             faskesSelect.add(defaultOpt);
 
-            const seen = new Set(); // untuk mendeteksi duplikat
+            const seen = new Set();
             const frag = document.createDocumentFragment();
 
             (hasil.data || []).forEach((item) => {
                 const f = item;
                 if (!f?.id || !f?.nama) return;
-
-                // kunci deduplikasi: id (paling aman)
                 const key = String(f.id);
                 if (seen.has(key)) return;
-
                 seen.add(key);
                 frag.appendChild(new Option(f.nama, f.id));
             });
@@ -416,16 +344,40 @@ window.filterFaskesRujukan = async function () {
             faskesSelect.appendChild(frag);
         } else {
             ALERT(hasil.message, hasil.ack);
-        } 
+        }
     } catch (error) {
         console.log("🚀 ~ filterFaskesRujukan ~ error:", error);
     }
 }
 
-swup.hooks.on("page:view", () => {hydrateDashboard();});
-swup.hooks.on('page:view', () => {cleanupScrollLocks();});
-swup.hooks.on("page:view", reinit);
-swup.hooks.on("visit:start", progressStart); // klik/link/submit dimulai
-swup.hooks.on("page:view", progressEnd); // halaman baru siap terlihat
-swup.hooks.on("visit:end", progressEnd); // fallback selesai
-swup.hooks.on('visit:start', () => { try { swup.cache.clear() } catch {} });
+// ---- Turbo Event Listeners ----
+
+// Saat halaman selesai dimuat (mirip swup page:view)
+document.addEventListener('turbo:load', () => {
+    hydrateDashboard();
+    cleanupScrollLocks();
+    
+    // Re-init Alpine
+    const el = document.body;
+    if (window.Alpine) {
+        requestAnimationFrame(() => window.Alpine.initTree(el));
+    }
+});
+
+// Saat navigasi dimulai (mirip swup visit:start)
+document.addEventListener('turbo:visit', () => {
+    progressStart();
+});
+
+// Saat render selesai (mirip swup page:view)
+document.addEventListener('turbo:render', () => {
+    progressEnd();
+});
+
+// Fallback ketika load selesai
+document.addEventListener('turbo:load', () => {
+    progressEnd();
+});
+
+// Initial hydration
+hydrateDashboard();

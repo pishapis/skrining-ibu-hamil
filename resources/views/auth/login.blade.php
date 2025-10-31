@@ -11,7 +11,7 @@
             <h4 class="text-2xl font-bold text-center text-gray-800 mb-2">Login Ibu Hamil</h4>
             <p class="text-sm text-gray-600 text-center mb-6">Masukkan NIK (KTP) Anda untuk melanjutkan</p>
             
-            <form method="POST" action="{{ route('login.user') }}" data-swup-form>
+            <form method="POST" action="{{ route('login.user') }}">
                 @csrf
                 <input type="hidden" name="login_type" value="user">
                 

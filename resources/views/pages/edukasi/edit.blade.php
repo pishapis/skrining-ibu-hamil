@@ -3,7 +3,7 @@
     <x-slot name="title">Edit: {{ $content->title }}</x-slot>
     <x-header-back>Edit Post Edukasi</x-header-back>
 
-    <form action="{{ route('edukasi.update',$content->slug) }}" method="post" enctype="multipart/form-data" data-no-swup class="space-y-5">
+    <form action="{{ route('edukasi.update',$content->slug) }}" method="post" enctype="multipart/form-data" class="space-y-5">
         @csrf @method('PUT')
 
         <div class="rounded-2xl border bg-white p-4 shadow-sm">
@@ -189,7 +189,7 @@
 
     {{-- JS: visibility toggle + drag-sort media + rules (pure JS) --}}
     <x-slot name="scripts">
-        <script data-swup-reload-script>
+        <script>
             (function() {
                 const $ = (s, c = document) => c.querySelector(s);
                 const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));

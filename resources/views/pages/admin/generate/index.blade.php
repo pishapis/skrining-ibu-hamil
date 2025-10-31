@@ -209,8 +209,7 @@
     </div>
 
     <x-slot name="scripts">
-        <script data-swup-reload-script>
-            // Swup compatible initialization
+        <script>
             function initializePage() {
                 // Load statistics on page load
                 loadStatistics();
@@ -233,15 +232,13 @@
                 }, 30000);
             }
 
-            // Initialize on page load and after Swup transitions
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', initializePage);
             } else {
                 initializePage();
             }
 
-            // Swup event listener for page transitions
-            document.addEventListener('swup:contentReplaced', initializePage);
+            document.addEventListener('turbo:load', initializePage);
 
             function generateLink() {
                 const form = document.getElementById('generateForm');

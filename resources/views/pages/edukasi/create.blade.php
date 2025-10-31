@@ -1,96 +1,129 @@
 <x-app-layout>
     @section('page_title','Buat Konten')
     @section('css')
-        <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
-        <style>
-            .upload-progress {
-                display: none;
-                margin-top: 1rem;
-            }
-            .upload-progress.active {
-                display: block;
-            }
-            .progress-bar {
-                width: 100%;
-                height: 24px;
-                background: #e5e7eb;
-                border-radius: 12px;
-                overflow: hidden;
-                position: relative;
-            }
-            .progress-fill {
-                height: 100%;
-                background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
-                transition: width 0.3s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 12px;
-                font-weight: 600;
-            }
-            .video-item {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px;
-                background: #f9fafb;
-                border-radius: 8px;
-                margin-top: 8px;
-            }
-            .video-item-thumbnail {
-                width: 80px;
-                height: 60px;
-                border-radius: 6px;
-                object-fit: cover;
-                background: #e5e7eb;
-            }
-            .video-item-info {
-                flex: 1;
-            }
-            .video-item-name {
-                font-size: 14px;
-                color: #374151;
-                font-weight: 500;
-            }
-            .video-item-progress {
-                font-size: 12px;
-                color: #6b7280;
-                margin-top: 4px;
-            }
-            .video-item-status {
-                font-size: 12px;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-weight: 500;
-                white-space: nowrap;
-            }
-            .status-uploading { background: #dbeafe; color: #1e40af; }
-            .status-pending { background: #fef3c7; color: #92400e; }
-            .status-processing { background: #e0e7ff; color: #3730a3; }
-            .status-completed { background: #d1fae5; color: #065f46; }
-            .status-failed { background: #fee2e2; color: #991b1b; }
-            
-            .video-item-progress-bar {
-                width: 100%;
-                height: 4px;
-                background: #e5e7eb;
-                border-radius: 2px;
-                overflow: hidden;
-                margin-top: 4px;
-            }
-            .video-item-progress-fill {
-                height: 100%;
-                background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
-                transition: width 0.3s ease;
-            }
-        </style>
+    <style>
+        .upload-progress {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .upload-progress.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .video-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        .video-item-thumbnail {
+            width: 80px;
+            height: 60px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #e5e7eb;
+        }
+
+        .video-item-info {
+            flex: 1;
+        }
+
+        .video-item-name {
+            font-size: 14px;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .video-item-progress {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .video-item-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .status-uploading {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-processing {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .video-item-progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .video-item-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
+            transition: width 0.3s ease;
+        }
+        .ql-editor {
+            min-height: 300px;
+        }
+    </style>
     @endsection
+
     <x-slot name="title">Buat Konten Edukasi</x-slot>
     <x-header-back>Post Edukasi</x-header-back>
 
     <a href="{{ route('edukasi.index') }}" class="btn-primary w-1/2 hidden md:block md:w-1/6">lihat Konten Edukasi</a>
-    
+
     <form id="edu-form" action="{{ route('edukasi.store') }}" method="post" enctype="multipart/form-data" class="space-y-5">
         @csrf
 
@@ -107,7 +140,8 @@
 
         <div class="rounded-2xl border bg-white p-4 shadow-sm">
             <label class="text-sm font-medium">Konten</label>
-            <textarea id="body" name="body" class="mt-1 w-full rounded-lg border px-3 py-2 min-h-60" rows="10"></textarea>
+            <div id="editor" class="mt-2 bg-white"></div>
+            <textarea name="body" id="body" style="display: none;"></textarea>
         </div>
 
         {{-- MEDIA --}}
@@ -121,7 +155,7 @@
             <label class="text-sm font-medium">Video (Upload)</label>
             <input type="file" id="video-input" name="videos[]" multiple accept="video/mp4,video/webm,video/quicktime" class="mt-2 block w-full">
             <p class="mt-1 text-xs text-gray-500">MP4/WEBM/MOV, maks ~700MB per file. Video akan dikompres dan thumbnail dibuat otomatis.</p>
-            
+
             <!-- Upload Progress -->
             <div id="upload-progress" class="upload-progress">
                 <div class="mb-2">
@@ -229,13 +263,11 @@
     </template>
 
     <x-slot name="scripts">
-        <script data-swup-reload-script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script data-swup-reload-script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
-        <script data-swup-reload-script>
+        <script>
             (function() {
-                const qs  = (s, c = document) => c.querySelector(s);
+                const qs = (s, c = document) => c.querySelector(s);
                 const qsa = (s, c = document) => Array.from(c.querySelectorAll(s));
-                
+
                 const form = qs('#edu-form');
                 const visSel = qs('#visibility');
                 const pusk = qs('#puskesmas-field');
@@ -253,8 +285,20 @@
                 let pollingIntervals = {};
 
                 const DIM = {
-                    epds: [{v: 'epds_total', t: 'EPDS Total'}],
-                    dass: [{v: 'dass_dep', t: 'Depresi'}, {v: 'dass_anx', t: 'Kecemasan'}, {v: 'dass_str', t: 'Stres'}]
+                    epds: [{
+                        v: 'epds_total',
+                        t: 'EPDS Total'
+                    }],
+                    dass: [{
+                        v: 'dass_dep',
+                        t: 'Depresi'
+                    }, {
+                        v: 'dass_anx',
+                        t: 'Kecemasan'
+                    }, {
+                        v: 'dass_str',
+                        t: 'Stres'
+                    }]
                 };
 
                 // Visibility toggle
@@ -353,18 +397,18 @@
                         item.className = 'video-item';
                         item.dataset.index = idx;
                         item.innerHTML = `
-                            <img class="video-item-thumbnail" src="{{ asset('assets/img/video-placeholder.svg') }}" alt="Thumbnail">
-                            <div class="video-item-info">
-                                <div class="video-item-name">${file.name} (${sizeInMB} MB)</div>
-                                <div class="video-item-progress">Menunggu upload...</div>
-                                <div class="video-item-progress-bar">
-                                    <div class="video-item-progress-fill" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <span class="video-item-status status-pending">Menunggu</span>
-                        `;
+                                    <img class="video-item-thumbnail" src="{{ asset('assets/img/video-placeholder.svg') }}" alt="Thumbnail">
+                                    <div class="video-item-info">
+                                        <div class="video-item-name">${file.name} (${sizeInMB} MB)</div>
+                                        <div class="video-item-progress">Menunggu upload...</div>
+                                        <div class="video-item-progress-bar">
+                                            <div class="video-item-progress-fill" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <span class="video-item-status status-pending">Menunggu</span>
+                                `;
                         videoItems.appendChild(item);
-                        
+
                         // Generate video thumbnail preview
                         generateVideoThumbnail(file, item.querySelector('.video-item-thumbnail'));
                     });
@@ -376,11 +420,11 @@
                     video.preload = 'metadata';
                     video.muted = true;
                     video.playsInline = true;
-                    
+
                     video.onloadedmetadata = function() {
                         video.currentTime = Math.min(2, video.duration / 2); // Get frame at 2s or middle
                     };
-                    
+
                     video.onseeked = function() {
                         const canvas = document.createElement('canvas');
                         canvas.width = video.videoWidth;
@@ -389,7 +433,7 @@
                         imgElement.src = canvas.toDataURL();
                         URL.revokeObjectURL(video.src);
                     };
-                    
+
                     video.src = URL.createObjectURL(file);
                 }
 
@@ -423,13 +467,13 @@
                             const percentComplete = Math.round((e.loaded / e.total) * 100);
                             uploadProgressFill.style.width = percentComplete + '%';
                             uploadProgressFill.textContent = percentComplete + '%';
-                            
+
                             // Update individual video items
                             qsa('.video-item').forEach(item => {
                                 const status = item.querySelector('.video-item-status');
                                 const progressText = item.querySelector('.video-item-progress');
                                 const progressFill = item.querySelector('.video-item-progress-fill');
-                                
+
                                 if (status.classList.contains('status-pending')) {
                                     status.className = 'video-item-status status-uploading';
                                     status.textContent = 'Uploading...';
@@ -444,10 +488,10 @@
                         if (xhr.status === 200) {
                             try {
                                 const response = JSON.parse(xhr.responseText);
-                                
+
                                 if (response.media_ids && response.media_ids.length > 0) {
                                     uploadedVideoMediaIds = response.media_ids;
-                                    
+
                                     // Start polling for each video
                                     qsa('.video-item').forEach((item, idx) => {
                                         const mediaId = uploadedVideoMediaIds[idx];
@@ -456,14 +500,14 @@
                                             startPolling(mediaId, item);
                                         }
                                     });
-                                    
+
                                     submitBtn.textContent = 'Video diproses...';
                                     uploadProgress.classList.remove('active');
                                 } else {
                                     // No videos uploaded, redirect
                                     window.location.href = response.redirect || "{{ route('edukasi.index') }}";
                                 }
-                            } catch(err) {
+                            } catch (err) {
                                 console.error('Parse error:', err);
                                 window.location.href = "{{ route('edukasi.index') }}";
                             }
@@ -490,28 +534,28 @@
                     const progressText = itemElement.querySelector('.video-item-progress');
                     const progressFill = itemElement.querySelector('.video-item-progress-fill');
                     const thumbnail = itemElement.querySelector('.video-item-thumbnail');
-                    
+
                     status.className = 'video-item-status status-processing';
                     status.textContent = 'Memproses...';
                     progressText.textContent = 'Mengkompresi video...';
-                    
+
                     pollingIntervals[mediaId] = setInterval(async () => {
                         try {
                             const response = await fetch(`/edukasi/video-status/${mediaId}`);
                             const data = await response.json();
-                            
+
                             if (data.status === 'completed') {
                                 clearInterval(pollingIntervals[mediaId]);
                                 status.className = 'video-item-status status-completed';
                                 status.textContent = 'Selesai';
                                 progressText.textContent = 'Kompresi selesai!';
                                 progressFill.style.width = '100%';
-                                
+
                                 // Update thumbnail if available
                                 if (data.thumbnail_url) {
                                     thumbnail.src = data.thumbnail_url;
                                 }
-                                
+
                                 checkAllCompleted();
                             } else if (data.status === 'failed') {
                                 clearInterval(pollingIntervals[mediaId]);
@@ -523,7 +567,7 @@
                                 const progress = data.progress || 0;
                                 progressText.textContent = `Memproses: ${progress}%`;
                                 progressFill.style.width = progress + '%';
-                                
+
                                 // Update thumbnail when available (around 10% progress)
                                 if (progress >= 10 && data.thumbnail_url && thumbnail.src.includes('placeholder')) {
                                     thumbnail.src = data.thumbnail_url;
@@ -541,7 +585,7 @@
                         const status = item.querySelector('.video-item-status');
                         return status.classList.contains('status-completed') || status.classList.contains('status-failed');
                     });
-                    
+
                     if (allCompleted) {
                         submitBtn.textContent = 'Selesai! Mengalihkan...';
                         setTimeout(() => {
@@ -557,17 +601,60 @@
                     uploadProgress.classList.remove('active');
                     uploadProgressFill.style.width = '0%';
                     uploadProgressFill.textContent = '0%';
-                    
+
                     Object.values(pollingIntervals).forEach(interval => clearInterval(interval));
                     pollingIntervals = {};
                 }
 
-                // Initialize Summernote
-                $('#body').summernote({
-                    height: 300,
+                const editorContainer = document.querySelector('#editor');
+                if (!editorContainer) return;
+
+                // Destroy existing instance
+                if (window.quillInstance) {
+                    window.quillInstance = null;
+                    editorContainer.innerHTML = '';
+                }
+
+                // Initialize Quill
+                const quill = new Quill('#editor', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'align': [] }],
+                            ['link', 'image', 'video'],
+                            ['clean']
+                        ]
+                    },
+                    placeholder: 'Tulis konten edukasi di sini...'
                 });
 
+                // Save to hidden textarea
+                const textarea = document.querySelector('#body');
+                quill.on('text-change', function() {
+                    textarea.value = quill.root.innerHTML;
+                });
+
+                // Load existing content
+                if (textarea.value) {
+                    quill.root.innerHTML = textarea.value;
+                }
+
+                // Store instance globally
+                window.quillInstance = quill;
+
             })();
+
+            document.addEventListener('turbo:before-cache', function() {
+                const editorContainer = document.querySelector('#editor');
+                if (editorContainer && window.quillInstance) {
+                    editorContainer.innerHTML = '';
+                    window.quillInstance = null;
+                }
+            });
         </script>
     </x-slot>
 </x-app-layout>
