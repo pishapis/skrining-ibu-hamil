@@ -29,7 +29,7 @@
                 @if ($c->coverUrl)
                     <img src="{{ $c->coverUrl }}" alt="{{ $c->title }}" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
                 @else
-                    <img src="{{ asset('storage/'.$c->cover_path) }}" alt="{{ $c->title }}" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
+                    <img src="{{ asset('storage/' . ($c->cover_path ?? $c->media->first()?->thumbnail_path)) }}" alt="{{ $c->title }}" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
                 @endif
             </div>
             <div class="p-4">

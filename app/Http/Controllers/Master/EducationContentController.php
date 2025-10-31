@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Master;
 
-
 use App\Http\Controllers\Controller;
 use App\Models\EducationContent;
 use App\Models\EducationMedia;
 use App\Models\EducationTag;
 use App\Models\EducationRule;
 use App\Models\DataDiri;
+use App\Jobs\CompressVideoJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -56,7 +56,6 @@ class EducationContentController extends Controller
 
         $contents = $q->paginate(12)->withQueryString();
         $contents->getCollection()->transform(function ($content) {
-            // Mengambil media embed untuk YouTube
             $coverUrl = null;
             $embed = $content->media->firstWhere('media_type', 'embed');
 
@@ -67,15 +66,14 @@ class EducationContentController extends Controller
                 }
             }
 
-            // Menambahkan coverUrl ke dalam objek konten
             $content->coverUrl = $coverUrl;
-
             return $content;
         });
-        
+
+        // dd($contents);
+
         return view('pages.edukasi.index', compact('contents'));
     }
-    
 
     /** Form create (admin/superadmin) */
     public function create()
@@ -101,7 +99,7 @@ class EducationContentController extends Controller
 
             // media
             'images.*'     => 'nullable|image|max:4096',
-            'videos.*'     => 'nullable|mimetypes:video/mp4,video/webm,video/quicktime|max:51200',
+            'videos.*'     => 'nullable|mimetypes:video/mp4,video/webm,video/quicktime|max:716800',
             'video_urls'   => 'nullable|string',
 
             // rules
@@ -140,8 +138,8 @@ class EducationContentController extends Controller
             $content->tags()->sync($tagIds);
         }
 
-        // media
-        $this->storeMedia($request, $content);
+        // media - collect video media IDs
+        $videoMediaIds = $this->storeMedia($request, $content);
 
         // rules
         if (!empty($data['rules'])) {
@@ -157,7 +155,35 @@ class EducationContentController extends Controller
             }
         }
 
-        return redirect()->route('pages.edukasi.show', $content->slug)->with('ok', 'Konten disimpan.');
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Konten disimpan. Video sedang diproses.',
+                'media_ids' => $videoMediaIds,
+                'redirect' => route('edukasi.show', $content->slug)
+            ]);
+        }
+
+        return redirect()->route('edukasi.show', $content->slug)
+            ->with('ok', 'Konten disimpan. Video sedang diproses.');
+    }
+
+    /** Get video processing status */
+    public function videoStatus($mediaId)
+    {
+        $media = EducationMedia::find($mediaId);
+
+        if (!$media) {
+            return response()->json(['error' => 'Media not found'], 404);
+        }
+
+        return response()->json([
+            'status' => $media->processing_status,
+            'progress' => $media->processing_progress,
+            'error' => $media->processing_error,
+            'thumbnail_url' => $media->thumbnail_url
+        ]);
     }
 
     /** Tampil detail */
@@ -205,11 +231,11 @@ class EducationContentController extends Controller
 
             // media baru
             'images.*'     => 'nullable|image|max:4096',
-            'videos.*'     => 'nullable|mimetypes:video/mp4,video/webm,video/quicktime|max:51200',
+            'videos.*'     => 'nullable|mimetypes:video/mp4,video/webm,video/quicktime|max:716800',
             'video_urls'   => 'nullable|string',
 
             // reorder & hapus
-            'existing_order' => 'nullable|string', // "id1,id2,id3"
+            'existing_order' => 'nullable|string',
             'remove_media'   => 'nullable|array',
             'remove_media.*' => 'integer',
 
@@ -279,7 +305,7 @@ class EducationContentController extends Controller
             }
         }
 
-        return redirect()->route('pages.edukasi.show', $content->slug)->with('ok', 'Konten diperbarui.');
+        return redirect()->route('edukasi.show', $content->slug)->with('ok', 'Konten diperbarui.');
     }
 
     /** Hapus konten */
@@ -288,7 +314,7 @@ class EducationContentController extends Controller
         $this->authorizeManage();
         $content = EducationContent::where('slug', $slug)->firstOrFail();
         $content->delete();
-        return redirect()->route('pages.edukasi.index')->with('ok', 'Konten dihapus.');
+        return redirect()->route('edukasi.index')->with('ok', 'Konten dihapus.');
     }
 
     // ===== Helpers =====
@@ -305,9 +331,10 @@ class EducationContentController extends Controller
         return max(1, (int)ceil($words / 200));
     }
 
-    private function storeMedia(Request $request, EducationContent $content, bool $append = false): void
+    private function storeMedia(Request $request, EducationContent $content, bool $append = false): array
     {
         $sort = $append ? (int)($content->media()->max('sort_order') ?? -1) + 1 : 0;
+        $videoMediaIds = [];
 
         // images
         if ($request->hasFile('images')) {
@@ -321,24 +348,37 @@ class EducationContentController extends Controller
                     'alt'        => $content->title,
                     'mime'       => $img->getMimeType(),
                     'sort_order' => $sort++,
+                    'processing_status' => 'completed',
+                    'processing_progress' => 100,
                 ]);
                 if (!$content->cover_path) $content->update(['cover_path' => $m->path]);
             }
         }
 
-        // videos
+        // videos - DISPATCH TO QUEUE
         if ($request->hasFile('videos')) {
             foreach ($request->file('videos') as $vid) {
                 if (!$vid) continue;
+
+                // Store original video
                 $vpath = $vid->store('edu', 'public');
-                EducationMedia::create([
+
+                // Create media record
+                $media = EducationMedia::create([
                     'content_id' => $content->id,
                     'media_type' => 'video',
                     'path'       => $vpath,
                     'alt'        => $content->title,
                     'mime'       => $vid->getMimeType(),
                     'sort_order' => $sort++,
+                    'processing_status' => 'pending',
+                    'processing_progress' => 0,
                 ]);
+
+                $videoMediaIds[] = $media->id;
+
+                // Dispatch compression job
+                CompressVideoJob::dispatch($media->id, $vpath);
             }
         }
 
@@ -353,8 +393,12 @@ class EducationContentController extends Controller
                 'external_url' => $u,
                 'alt'         => $content->title,
                 'sort_order'  => $sort++,
+                'processing_status' => 'completed',
+                'processing_progress' => 100,
             ]);
         }
+
+        return $videoMediaIds;
     }
 
     private function youtubeId(?string $url): ?string
@@ -363,18 +407,15 @@ class EducationContentController extends Controller
         $u = parse_url($url);
         if (!$u || empty($u['host'])) return null;
 
-        // youtu.be/<id>
         if (str_contains($u['host'], 'youtu.be')) {
             return ltrim($u['path'] ?? '', '/');
         }
 
-        // youtube.com/watch?v=<id>
         if (str_contains($u['host'], 'youtube.com')) {
             if (!empty($u['query'])) {
                 parse_str($u['query'], $q);
                 return $q['v'] ?? null;
             }
-            // youtube.com/embed/<id>
             if (!empty($u['path']) && str_contains($u['path'], '/embed/')) {
                 return trim(str_replace('/embed/', '', $u['path']), '/');
             }

@@ -1,0 +1,6 @@
+<!-- Atau gunakan inline SVG di view -->
+<svg class="video-item-thumbnail" viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="80" height="60" fill="#E5E7EB"/>
+  <circle cx="40" cy="30" r="12" fill="#9CA3AF"/>
+  <path d="M37 24L47 30L37 36V24Z" fill="white"/>
+</svg>
