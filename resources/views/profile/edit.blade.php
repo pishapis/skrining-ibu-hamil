@@ -63,7 +63,7 @@
     </div>
 
     <x-slot name="scripts">
-        <script data-swup-reload-script>
+        <script>
 
         </script>
     </x-slot>

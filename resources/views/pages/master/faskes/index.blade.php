@@ -164,7 +164,7 @@
             </div>
 
             {{-- ========== FORM IBU ========== --}}
-            <form x-show="S.type === 'rujukan'" x-cloak data-swup-form
+            <form x-show="S.type === 'rujukan'" x-cloak
                 :action="`{{ route('faskes.rujukan.update', '_ID_') }}`.replace('_ID_', S.form?.id ?? '' )"
                 method="POST"
                 class="space-y-4">
@@ -229,7 +229,7 @@
             </form>
 
             {{-- ========== FORM PUSKESMAS ========== --}}
-            <form x-show="S.type === 'puskesmas'" x-cloak data-swup-form
+            <form x-show="S.type === 'puskesmas'" x-cloak
                 :action="`{{ route('faskes.puskesmas.update', '_ID_') }}`.replace('_ID_', S.form?.id ?? '' )"
                 method="POST"
                 class="space-y-4">
@@ -319,7 +319,7 @@
 
     {{-- ===================== SCRIPTS ===================== --}}
     <x-slot name="scripts">
-        <script data-swup-reload-script>
+        <script>
             // ========== Alpine Global Store + Open/Close Modal ==========
             (function() {
                 const defaults = () => ({

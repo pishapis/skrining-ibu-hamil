@@ -3,7 +3,7 @@
     <a href="{{ url('/') }}" class="p-4 mb-0 text-center cursor-pointer">
         <img src="{{ asset('/assets/logos/simkeswa.png') }}" alt="Logo" class="mx-auto mb-4 rounded-full">
     </a>
-    <nav data-swup-preload-all class="space-y-2">
+    <nav class="space-y-2">
         <!-- Menu untuk semua pengguna -->
         <div @class([ 'px-3 py-2 rounded-lg font-medium text-slate-600 transition hover:bg-teal-50 hover:text-teal-600' , request()->routeIs('dashboard') ? 'bg-blue-100 text-blue-800' : ''])>
             <a href="{{ url('/') }}">

@@ -281,7 +281,7 @@ $wizardSteps = $isPuskesmas
         </form>
         @if (Auth::check() == false)
         <p class="text-center text-gray-600 text-sm mt-4">Ingin Membatalkan?
-            <a href="{{ route('manajemen.pengguna', [], false) }}" data-swup-preload class="text-blue-600 font-medium hover:underline">Kembali</a>
+            <a href="{{ route('manajemen.pengguna', [], false) }}" class="text-blue-600 font-medium hover:underline">Kembali</a>
         </p>
         @endif
     </div>

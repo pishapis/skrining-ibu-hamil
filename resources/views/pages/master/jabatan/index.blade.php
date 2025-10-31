@@ -62,7 +62,7 @@
 
     {{-- ===================== MODAL (JETSTREAM) ===================== --}}
     <x-modal name="confirm-deletion" focusable>
-        <form method="POST" x-cloak data-swup-form
+        <form method="POST" x-cloak
             :action="$store.confirm ? `{{ route('jabatan.destroy', '_ID_') }}`.replace('_ID_', $store.confirm.id ?? '') : '#'"
             class="p-6">
             @csrf
@@ -88,7 +88,7 @@
             x-data="{ get S(){ return $store.editJabatan ?? { type:'jabatan', form:{} } } }">
 
             <!-- FORM: JABATAN -->
-            <form x-show="S.type === 'jabatan'" x-cloak data-swup-form
+            <form x-show="S.type === 'jabatan'" x-cloak
                 method="POST"
                 :action="`{{ route('jabatan.update', '_ID_') }}`.replace('_ID_', S.form?.id ?? '')"
                 class="space-y-4">
@@ -129,7 +129,7 @@
 
     {{-- ===================== SCRIPTS ===================== --}}
     <x-slot name="scripts">
-        <script data-swup-reload-script>
+        <script>
             // ========== Alpine Global Store + Open/Close Modal ==========
             (function() {
                 const defaults = () => ({

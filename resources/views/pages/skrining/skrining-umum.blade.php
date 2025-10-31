@@ -74,8 +74,6 @@ return [
 </head>
 
 <body class="bg-cover bg-no-repeat md:bg-slate-100 md:bg-none" style="background-image: url('/assets/img/bg-mobile.png');">
-    <div id="swup-progress" aria-hidden="true"></div>
-
     {{-- JSON Data Seed untuk JavaScript --}}
     <script type="application/json" id="skrining-seed">
         {!!json_encode([
@@ -100,7 +98,7 @@ return [
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
     </script>
 
-    <div id="app-frame" data-swup-container class="overflow-auto min-h-screen md:flex transition-opacity duration-75">
+    <div id="app-frame" class="overflow-auto min-h-screen md:flex transition-opacity duration-75">
         <div class="flex-1">
             <main class="p-4 md:p-8 pb-24 md:pb-8">
                 <div id="swup">
@@ -364,7 +362,7 @@ return [
             </main>
         </div>
 
-        <script data-swup-reload-script>
+        <script>
             (function() {
                 // Load data dari JSON seed
                 const seedEl = document.getElementById('skrining-seed');

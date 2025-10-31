@@ -217,28 +217,3 @@ label {
     border-top-right-radius: 0.2rem;
     border-bottom-right-radius: 0.2rem;
 }
-
-/* ---- Transisi halaman dengan class bawaan Swup ---- */
-
-/* Saat transisi, cegah double click/scroll */
-html.is-changing #app-frame { pointer-events: none; }
-/* Keluar & masuk sama-sama dari state 0 → 1 */
-html.is-leaving   #app-frame,
-/* Progress bar di atas (mirip Livewire) */
-:root { --swup-progress-color: #0ea5e9; } /* sesuaikan warnanya */
-#swup-progress {
-  position: fixed;
-  top: 0; left: 0;
-  width: 0; 
-  height: 3px;
-  background: var(--swup-progress-color);
-  z-index: 9000;
-  opacity: 0;
-  transition: width .2s ease, opacity .2s ease;
-}
-
-/* Aksesibilitas */
-@media (prefers-reduced-motion: reduce) {
-  #app-frame { transition: none; }
-  #swup-progress { transition: none; }
-}

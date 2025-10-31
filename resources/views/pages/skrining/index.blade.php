@@ -311,7 +311,7 @@
 
     {{-- ======= Scripts (ID & alur tetap, hanya styling & UX) ======= --}}
     <x-slot name="scripts">
-        <script data-swup-reload-script>
+        <script>
             window.SKRININGS = window.SKRININGS || {};
             SKRININGS.skrining = SKRININGS.skrining || {};
 
@@ -1074,8 +1074,8 @@
                     }
                 }
             });
-            document.addEventListener('DOMContentLoaded', initSkriningView);
-            document.addEventListener('swup:contentReplaced', initSkriningView);
+
+            document.addEventListener('turbo:load', initSkriningView);
         </script>
     </x-slot>
 </x-app-layout>

@@ -616,7 +616,7 @@
 
         <x-slot name="scripts">
             {{-- Custom Date Range Toggle --}}
-            <script data-swup-reload-script>
+            <script>
                 document.getElementById('date_range_select')?.addEventListener('change', function() {
                     const customDiv = document.getElementById('custom_date_range');
                     if (this.value === 'custom') {
@@ -633,7 +633,7 @@
             </script>
 
             {{-- Dashboard Seed Data --}}
-            <script data-swup-reload-script type="application/json" id="dashboard-seed">
+            <script type="application/json" id="dashboard-seed">
                 {!! json_encode([
                     'role' => $role,
                     'epdsTrend' => $epdsTrend ?? [],
@@ -644,7 +644,7 @@
             </script>
 
             {{-- ApexCharts Rendering --}}
-            <script data-swup-reload-script>
+            <script>
                 (function() {
                     const seedEl = document.getElementById('dashboard-seed');
                     if (!seedEl) return;

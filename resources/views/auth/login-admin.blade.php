@@ -6,7 +6,7 @@
 
     <div class="bg-gray-50 rounded-xl border border-gray-200 p-6 shadow-md">
         <h4 class="text-2xl font-bold text-center text-gray-800 mb-6">Selamat Datang Kembali!</h4>
-        <form method="POST" action="{{ route('login.admin') }}" data-swup-form>
+        <form method="POST" action="{{ route('login.admin') }}">
             @csrf
             <div class="mb-4">
                 <label for="login" class="block text-gray-700 text-sm font-medium mb-2">Email atau Username</label>

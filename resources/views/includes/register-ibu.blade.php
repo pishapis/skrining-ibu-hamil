@@ -513,7 +513,7 @@ elseif (Str::contains($first, ['suami','anak'])) $errorStep = 3;
         </form>
         @if (Auth::check() == false)
         <p class="text-center text-gray-600 text-sm mt-4">Sudah punya akun?
-            <a href="{{ route('login', [], false) }}" data-swup-preload class="text-blue-600 font-medium hover:underline">Masuk</a>
+            <a href="{{ route('login', [], false) }}" class="text-blue-600 font-medium hover:underline">Masuk</a>
         </p>
         @endif
     </div>

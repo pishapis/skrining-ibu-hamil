@@ -30,8 +30,7 @@
 </head>
 
 <body class="bg-cover bg-no-repeat md:bg-slate-100 md:bg-none" style="background-image: url('/assets/img/bg-mobile.png');">
-    <div id="swup-progress" aria-hidden="true"></div>
-    <div id="app-frame" data-swup-container x-data="{ openSidebar:false }" x-bind:class="{ 'overflow-hidden': openSidebar }" class="overflow-auto min-h-screen md:flex transition-opacity duration-75">
+    <div id="app-frame" x-data="{ openSidebar:false }" x-bind:class="{ 'overflow-hidden': openSidebar }" class="overflow-auto min-h-screen md:flex transition-opacity duration-75">
         @include('layouts.sidebar-desktop')
         <x-session />
         <div class="flex-1">
@@ -57,7 +56,7 @@
         {{ $scripts ?? '' }}
     </div>
 
-    <script data-swup-reload-script>
+    <script>
        if ('serviceWorker' in navigator) {
         const swURL = new URL('/sw.js', location.origin).toString();
         navigator.serviceWorker.register(swURL, { scope: '/admin/' })

@@ -1,4 +1,4 @@
-<form x-cloak data-swup-form
+<form x-cloak
     {{-- :action="`{{ route('pengguna.ibu.update', '_ID_') }}`.replace('_ID_', S.form?.id ?? '' )" --}}
     action="#"
     method="POST"
@@ -11,7 +11,7 @@
             <input name="nama_puskesmas" type="text" class="input-field" value="">
             <x-input-error class="mt-2" :messages="$errors->get('nama_puskesmas')" />
         </div>
-
+ 
         <div>
             <label class="block text-sm font-medium">Alamat</label>
             <input name="alamat_puskesmas" type="text" class="input-field" value="">
