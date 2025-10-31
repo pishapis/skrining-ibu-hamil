@@ -76,6 +76,8 @@ Route::middleware(['auth', 'verified', 'is_superadmin'])->group(function () {
     Route::get('/edukasi/{slug}/edit', [EducationContentController::class, 'edit'])->name('edukasi.edit');
     Route::put('/edukasi/{slug}',      [EducationContentController::class, 'update'])->name('edukasi.update');
     Route::delete('/edukasi/{slug}',    [EducationContentController::class, 'destroy'])->name('edukasi.destroy');
+    Route::get('/edukasi/video-status/{mediaId}', [EducationContentController::class, 'videoStatus'])->name('edukasi.video.status');
+    Route::get('/edukasi/{slug}', [EducationContentController::class, 'show'])->name('edukasi.show');
 });
 
 Route::middleware(['auth', 'verified', 'is_admin', 'can:manage-rescreen-tokens'])->group(function () {

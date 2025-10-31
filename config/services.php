@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'ffmpeg' => [
+        'binaries_prod' => env('FFMPEG_BINARIES_PROD', '/usr/bin/ffmpeg'),
+        'probe_prod' => env('FFPROBE_BINARIES_PROD', '/usr/bin/ffprobe'),
+        'binaries_dev' => env('FFMPEG_BINARIES_DEV', 'C:/ffmpeg/bin/ffmpeg.exe'),
+        'probe_dev' => env('FFPROBE_BINARIES_DEV', 'C:/ffmpeg/bin/ffprobe.exe'),
+    ],
+
 ];

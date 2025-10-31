@@ -11,15 +11,19 @@ class EducationMedia extends Model
         'media_type',
         'path',
         'poster_path',
+        'thumbnail_path',
         'external_url',
         'mime',
         'duration',
         'alt',
         'caption',
-        'sort_order'
+        'sort_order',
+        'processing_status',
+        'processing_progress',
+        'processing_error'
     ];
 
-    protected $appends = ['url', 'poster_url', 'is_image', 'is_video', 'is_embed', 'embed_src'];
+    protected $appends = ['url', 'poster_url', 'thumbnail_url', 'is_image', 'is_video', 'is_embed', 'embed_src'];
 
     public function content()
     {
@@ -41,14 +45,34 @@ class EducationMedia extends Model
         return '';
     }
 
+    public function getThumbnailUrlAttribute(): string
+    {
+        if ($this->thumbnail_path) {
+            return asset('storage/' . $this->thumbnail_path);
+        }
+        
+        // Fallback to poster or YouTube thumbnail
+        if ($this->poster_path) {
+            return asset('storage/' . $this->poster_path);
+        }
+        
+        if ($this->media_type === 'embed' && $id = $this->parseYoutubeId($this->external_url)) {
+            return "https://i.ytimg.com/vi/$id/hqdefault.jpg";
+        }
+        
+        return '';
+    }
+
     public function getIsImageAttribute(): bool
     {
         return $this->media_type === 'image';
     }
+    
     public function getIsVideoAttribute(): bool
     {
         return $this->media_type === 'video';
     }
+    
     public function getIsEmbedAttribute(): bool
     {
         return $this->media_type === 'embed';
@@ -67,6 +91,7 @@ class EducationMedia extends Model
         $p = '/(?:youtu\.be\/|youtube\.com\/(?:embed\/|shorts\/|watch\?v=|v\/))([\w\-]{6,})/i';
         return preg_match($p, $url, $m) ? $m[1] : null;
     }
+    
     private function parseVimeoId(?string $url): ?string
     {
         if (!$url) return null;
