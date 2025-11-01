@@ -53,9 +53,9 @@
             </main>
         </div>
         @include('layouts.footer')
-        {{ $scripts ?? '' }}
     </div>
-
+    
+    {{ $scripts ?? '' }}
     <script>
        if ('serviceWorker' in navigator) {
         const swURL = new URL('/sw.js', location.origin).toString();

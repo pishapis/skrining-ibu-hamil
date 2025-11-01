@@ -22,25 +22,59 @@
         </div>
 
         {{-- Global Filter Panel - Tampil untuk semua role --}}
-        <div class="mt-6 bg-gradient-to-r from-teal-50 to-blue-50 border border-teal-200 rounded-xl p-5">
-            <form method="GET" action="{{ route('dashboard') }}" id="dashboard-filter-form" class="space-y-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="font-semibold text-gray-900 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                        </svg>
-                        Filter Dashboard
-                    </h3>
-                    <div class="flex gap-2">
-                        <button type="submit" class="px-4 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700">
-                            Terapkan Filter
-                        </button>
-                        <a href="{{ route('dashboard') }}" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
-                            Reset
-                        </a>
-                    </div>
+        <div x-data="{ 
+            isExpanded: false,
+            hasActiveFilters: true,
+            toggleFilter() {
+                this.isExpanded = !this.isExpanded;
+                // Save state to localStorage
+                localStorage.setItem('dashboard_filter_expanded', this.isExpanded);
+            },
+            init() {
+                // Restore state from localStorage
+                const saved = localStorage.getItem('dashboard_filter_expanded');
+                this.isExpanded = saved === 'true';
+            }
+        }" class="mt-6 bg-gradient-to-r from-teal-50 to-blue-50 border border-teal-200 rounded-xl p-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <button @click="toggleFilter()" 
+                        type="button"
+                        class="flex items-center gap-2 font-semibold text-gray-900 hover:text-teal-700 transition-colors">
+                    <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                    </svg>
+                    Filter Dashboard
+                    
+                    <!-- Expand/Collapse Icon -->
+                    <svg :class="{ 'rotate-180': isExpanded }" 
+                            class="w-4 h-4 text-gray-500 transition-transform duration-300" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div class="flex gap-2 md:justify-end">
+                    <button type="submit" form="dashboard-filter-form" class="px-4 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700">
+                        Terapkan Filter
+                    </button>
+                    <a href="{{ route('dashboard') }}" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
+                        Reset
+                    </a>
                 </div>
+            </div>
 
+            <form method="GET" action="{{ route('dashboard') }}" 
+                    id="dashboard-filter-form" 
+                    x-show="isExpanded"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 -translate-y-4"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 -translate-y-4"
+                    class="px-5 pb-5 space-y-4"
+            >
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {{-- Jenis Skrining --}}
                     <div>
@@ -352,7 +386,7 @@
                 <div class="text-sm font-semibold">Riwayat</div>
                 <div class="text-xs text-gray-500 mt-1">Hasil & Unduh</div>
             </a>
-            <a href="#" class="rounded-xl border p-4 text-center hover:shadow-sm">
+            <a href="{{ url('/edukasi') }}" class="rounded-xl border p-4 text-center hover:shadow-sm">
                 <div class="text-sm font-semibold">Edukasi</div>
                 <div class="text-xs text-gray-500 mt-1">Materi & Tips</div>
             </a>
@@ -553,7 +587,7 @@
                             bg-gray-100 border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition">
                         <div class="relative aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-gray-100">
                             @if($c['cover'])
-                            <img src="{{ $c['cover'] }}" alt="{{ $c['title'] }}"
+                            <img src="{{ asset('storage/' . $c['cover'])}}" alt="{{ $c['title'] }}"
                                 loading="lazy" decoding="async"
                                 class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]">
                             @else

@@ -327,9 +327,18 @@ class DashboardController extends Controller
 
         $months = [
             'all' => 'Semua Bulan',
-            '1' => 'Januari', '2' => 'Februari', '3' => 'Maret', '4' => 'April',
-            '5' => 'Mei', '6' => 'Juni', '7' => 'Juli', '8' => 'Agustus',
-            '9' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+            '1' => 'Januari',
+            '2' => 'Februari',
+            '3' => 'Maret',
+            '4' => 'April',
+            '5' => 'Mei',
+            '6' => 'Juni',
+            '7' => 'Juli',
+            '8' => 'Agustus',
+            '9' => 'September',
+            '10' => 'Oktober',
+            '11' => 'November',
+            '12' => 'Desember'
         ];
 
         $trimesters = [
@@ -561,7 +570,7 @@ class DashboardController extends Controller
                     ->on('he.id', '=', 'p.pick_id');
             })
             ->join('data_diri as dd', 'dd.id', '=', 'he.ibu_id')
-            ->leftJoin('usia_hamil as uh', function($j) {
+            ->leftJoin('usia_hamil as uh', function ($j) {
                 $j->on('uh.ibu_id', '=', 'dd.id')
                     ->whereNotNull('uh.hpht')
                     ->whereNotNull('uh.hpl');
@@ -599,7 +608,7 @@ class DashboardController extends Controller
                     ->on('hd.id', '=', 'p.pick_id');
             })
             ->join('data_diri as dd', 'dd.id', '=', 'hd.ibu_id')
-            ->leftJoin('usia_hamil as uh', function($j) {
+            ->leftJoin('usia_hamil as uh', function ($j) {
                 $j->on('uh.ibu_id', '=', 'dd.id')
                     ->whereNotNull('uh.hpht')
                     ->whereNotNull('uh.hpl');
@@ -618,7 +627,7 @@ class DashboardController extends Controller
 
         foreach ($epds as $r) {
             $dt = Carbon::parse($r->screening_date);
-            
+
             $usiaInfo = null;
             if ($r->mode === 'kehamilan' && $r->hpht) {
                 $usiaMinggu = Kehamilan::hitungUsiaMinggu($r->hpht);
@@ -627,7 +636,7 @@ class DashboardController extends Controller
                     'trimester' => Kehamilan::tentukanTrimester($usiaMinggu),
                 ];
             }
-            
+
             $items[] = [
                 'type'  => 'EPDS',
                 'mode'  => $r->mode ?? 'kehamilan',
@@ -642,7 +651,7 @@ class DashboardController extends Controller
 
         foreach ($dassResults as $r) {
             $dt = Carbon::parse($r->screening_date);
-            
+
             $usiaInfo = null;
             if ($r->mode === 'kehamilan' && $r->hpht) {
                 $usiaMinggu = Kehamilan::hitungUsiaMinggu($r->hpht);
@@ -651,7 +660,7 @@ class DashboardController extends Controller
                     'trimester' => Kehamilan::tentukanTrimester($usiaMinggu),
                 ];
             }
-            
+
             $items[] = [
                 'type'      => 'DASS-21',
                 'jenis'     => $r->mode,
@@ -865,21 +874,23 @@ class DashboardController extends Controller
         $rows = $q->get();
 
         return $rows->map(function ($c) {
-            $cover = $c->cover_path
-                ?: optional($c->media->firstWhere('media_type', 'image'))->path;
-
-            $coverUrl = $cover ? Storage::disk('public')->url($cover) : null;
-
-            if (!$coverUrl) {
-                $embed = $c->media->firstWhere('media_type', 'embed');
-                if ($embed && $this->youtubeId($embed->external_url)) {
-                    $coverUrl = 'https://i.ytimg.com/vi/' . $this->youtubeId($embed->external_url) . '/hqdefault.jpg';
-                }
-            }
+            $coverUrl = $this->getContentCoverUrl($c);
 
             $imgCount = $c->media->where('media_type', 'image')->count();
-            $hasVideo = $c->media->contains(fn($m) => $m->media_type === 'embed');
-            $badge = $hasVideo ? 'Video' : ($imgCount > 1 ? "{$imgCount} gambar" : ($imgCount === 1 ? 'Gambar' : null));
+            $videoCount = $c->media->where('media_type', 'video')->count();
+            $embedCount = $c->media->where('media_type', 'embed')->count();
+
+            $hasVideo = ($videoCount + $embedCount) > 0;
+
+            // Tentukan badge berdasarkan media type
+            $badge = null;
+            if ($hasVideo) {
+                $badge = 'Video';
+            } elseif ($imgCount > 1) {
+                $badge = "{$imgCount} gambar";
+            } elseif ($imgCount === 1) {
+                $badge = 'Gambar';
+            }
 
             return [
                 'id'       => $c->id,
@@ -891,6 +902,53 @@ class DashboardController extends Controller
                 'tags'     => $c->tags->pluck('name')->take(3)->values()->all(),
             ];
         })->all();
+    }
+
+    /**
+     * Get cover URL for education content with priority:
+     * 1. cover_path dari content
+     * 2. thumbnail_path dari media pertama (video upload)
+     * 3. poster_path dari media pertama (gambar/video)
+     * 4. path dari media image pertama
+     * 5. YouTube thumbnail dari embed pertama
+     */
+    private function getContentCoverUrl($content): ?string
+    {
+        // Priority 1: cover_path dari content
+        if ($content->cover_path) {
+            return $content->cover_path;
+        }
+
+        // Priority 2-3: cek media pertama untuk thumbnail atau poster
+        $firstMedia = $content->media->first();
+        if ($firstMedia) {
+            // Video upload biasanya punya thumbnail_path
+            if ($firstMedia->thumbnail_path) {
+                return $firstMedia->thumbnail_path;
+            }
+
+            // Poster path (bisa dari video atau gambar)
+            if ($firstMedia->poster_path) {
+                return $firstMedia->poster_path;
+            }
+        }
+
+        // Priority 4: cari media type image pertama
+        $imageMedia = $content->media->firstWhere('media_type', 'image');
+        if ($imageMedia && $imageMedia->path) {
+            return $imageMedia->path;
+        }
+
+        // Priority 5: YouTube thumbnail dari embed
+        $embedMedia = $content->media->firstWhere('media_type', 'embed');
+        if ($embedMedia && $embedMedia->external_url) {
+            $youtubeId = $this->youtubeId($embedMedia->external_url);
+            if ($youtubeId) {
+                return "https://i.ytimg.com/vi/{$youtubeId}/hqdefault.jpg";
+            }
+        }
+
+        return null;
     }
 
     private function youtubeId(?string $url): ?string

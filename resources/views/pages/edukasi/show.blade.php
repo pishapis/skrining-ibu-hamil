@@ -3,7 +3,7 @@
     <x-slot name="title">{{ $content->title }}</x-slot>
     <x-header-back>Konten Edukasi</x-header-back>
 
-    <article class="mx-auto max-w-3xl">
+    <article class="mx-auto max-w-3xl py-5">
         <header class="mb-4">
             <div class="text-[11px] text-gray-500 flex items-center gap-2">
                 @if($content->visibility==='facility')
