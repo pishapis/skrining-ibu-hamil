@@ -9,6 +9,7 @@ use App\Models\AnswerEpds;
 use App\Models\DataDiri;
 use App\Models\HasilEpds;
 use App\Models\HasilDass;
+use App\Support\Kehamilan;
 use App\Models\SkriningDass;
 use App\Models\UsiaHamil;
 use App\Models\GeneratedLink;
@@ -344,6 +345,7 @@ class SkriningController extends Controller
             // hitung trimester
             $usiaMgg   = hitungUsiaKehamilanMinggu($riwayat->hpht);
             $trimester = tentukanTrimester($usiaMgg); // 'trimester_1'|'trimester_2'|'trimester_3'|'pasca_hamil'
+            $keterangan  = hitungUsiaKehamilanString($riwayat->hpht);
 
             // sudah pernah submit pada trimester ini?
             $submittedCount = HasilEpds::where('ibu_id', $data_diri->id)
@@ -391,6 +393,10 @@ class SkriningController extends Controller
                         'session_token' => $draft->session_token,
                         'trimester'     => $trimester,
                         'usia_hamil_id' => $riwayat->id,
+                        'hpht'          => $riwayat->hpht,
+                        'hpl'           => $riwayat->hpl,
+                        'usia_minggu'   => $usiaMgg,
+                        'keterangan'    => $keterangan,
                         'answered'      => $answered,
                         'total'         => $total,
                         'batch_no'      => (int)($draft->batch_no ?? 1), // <--- NEW
@@ -399,7 +405,7 @@ class SkriningController extends Controller
             }
 
             // === Atomic: buat session baru + stamp trimester ===
-            $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $submittedCount, $activeToken) {
+            $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $submittedCount, $activeToken, $usiaMgg, $keterangan) {
                 $now = now();
 
                 $riwayatLock = UsiaHamil::lockForUpdate()->find($riwayat->id);
@@ -407,6 +413,9 @@ class SkriningController extends Controller
                 $session = HasilEpds::create([
                     'ibu_id'           => $data_diri->id,
                     'usia_hamil_id'    => $riwayatLock->id,
+                    'hpht'             => $riwayatLock->hpht,
+                    'hpl'              => $riwayatLock->hpl,
+                    'usia_minggu'      => $usiaMgg,
                     'status'           => 'draft',
                     'mode'             => 'kehamilan',
                     'periode'          => null,
@@ -434,6 +443,10 @@ class SkriningController extends Controller
                         'session_token'  => $session->session_token,
                         'trimester'      => $trimester,
                         'usia_hamil_id'  => $riwayatLock->id,
+                        'hpht'           => $riwayat->hpht,
+                        'hpl'            => $riwayat->hpl,
+                        'keterangan'     => $keterangan,
+                        'usia_minggu'    => $usiaMgg,
                         'answered'       => 0,
                         'total'          => $total,
                         'batch_no'       => (int)$session->batch_no,   // <--- NEW
@@ -531,18 +544,19 @@ class SkriningController extends Controller
 
                 $totalScore = $rows->sum(fn($r) => $r->answersEpds->score ?? 0);
 
-                // Perhatikan: disini asumsi butir Q10 punya epds_id = 10.
-                // Ideal: gunakan kolom 'urutan' untuk cari butir #10.
+                // Cek Q10 (sesuaikan dengan epds_id yang sebenarnya)
                 $q10Row = $rows->firstWhere('epds_id', 10);
                 $q10Label = mb_strtolower($q10Row->answersEpds->jawaban ?? '');
                 $q10AgakSering = str_contains($q10Label, 'agak') && str_contains($q10Label, 'sering');
 
                 $isRisk = ($totalScore >= 13) || $q10AgakSering;
-                $riskTitle = $isRisk ? 'Terindikasi Depresi' : 'Tidak menunjukkan gejala signifikan';
 
-                $advice = $isRisk
-                    ? 'Lakukan pemeriksaan kesehatan jiwa untuk menegakkan diagnosis dan tata laksana sesuai kompetensi tenaga medis/tenaga kesehatan puskesmas (dokter, psikolog klinis, perawat).'
-                    : 'Edukasi kesehatan jiwa dan/atau lakukan skrining ulang pada kunjungan ANC berikutnya (oleh bidan, perawat, dokter, psikolog klinis).';
+                // === PESAN YANG DIPERBAIKI ===
+                if ($isRisk) {
+                    $advice = 'Segera lakukan konsultasi dengan bidan, dokter, psikolog klinis, atau perawat di puskesmas untuk pemeriksaan lanjutan dan mendapatkan dukungan yang tepat.';
+                } else {
+                    $advice = '🎉 Selamat! Kondisi kesehatan mental Anda saat ini baik. Tetap jaga kesehatan dengan istirahat cukup, makan bergizi, dan berbagi cerita dengan orang terdekat. 📅 Lakukan skrining ulang pada trimester berikutnya atau saat kontrol kehamilan rutin.';
+                }
 
                 // Tutup semua baris di session ini
                 HasilEpds::where('session_token', $request->session_token)->update([
@@ -563,6 +577,36 @@ class SkriningController extends Controller
                     }
                 }
 
+                // === HITUNG JADWAL SKRINING BERIKUTNYA ===
+                $nextSchedule = null;
+                $nextScheduleText = null;
+
+                if ($seed->usia_hamil_id) {
+                    $usiaHamil = UsiaHamil::find($seed->usia_hamil_id);
+
+                    if ($usiaHamil && $usiaHamil->hpht) {
+                        $hpht = Carbon::parse($usiaHamil->hpht);
+                        $hpl = $usiaHamil->hpl ? Carbon::parse($usiaHamil->hpl) : null;
+
+                        // Ambil semua trimester yang sudah disubmit untuk ibu ini
+                        $submittedTrimesters = HasilEpds::where('ibu_id', $seed->ibu_id)
+                            ->where('status', 'submitted')
+                            ->whereNotNull('trimester')
+                            ->pluck('trimester')
+                            ->unique()
+                            ->values()
+                            ->all();
+
+                        // Gunakan fungsi yang sama dengan dashboard
+                        $nextScheduleData = $this->computeNextScreeningSchedule($hpht, $hpl, $submittedTrimesters);
+
+                        if ($nextScheduleData) {
+                            $nextSchedule = $nextScheduleData['date']?->format('Y-m-d');
+                            $nextScheduleText = $nextScheduleData['phase'];
+                        }
+                    }
+                }
+
                 return [
                     'ack' => 'ok',
                     'message' => 'Skrining tersubmit.',
@@ -572,9 +616,10 @@ class SkriningController extends Controller
                         'trimester'        => $seed->trimester,
                         'q10_agak_sering'  => $q10AgakSering,
                         'is_risk'          => $isRisk,
-                        'risk_title'       => $riskTitle,
                         'advice'           => $advice,
-                        'batch_no'         => (int)$seed->batch_no, // opsional untuk UI
+                        'batch_no'         => (int)$seed->batch_no,
+                        'next_schedule'    => $nextSchedule,
+                        'next_schedule_text' => $nextScheduleText,
                     ]
                 ];
             });
@@ -665,6 +710,7 @@ class SkriningController extends Controller
                 // MODE KEHAMILAN - berdasarkan trimester
                 $usiaMgg = hitungUsiaKehamilanMinggu($riwayat->hpht);
                 $trimester = tentukanTrimester($usiaMgg);
+                $keterangan  = hitungUsiaKehamilanString($riwayat->hpht);
 
                 $submittedCount = HasilDass::where('ibu_id', $data_diri->id)
                     ->where('trimester', $trimester)
@@ -714,6 +760,10 @@ class SkriningController extends Controller
                             'type'          => 'kehamilan',
                             'trimester'     => $trimester,
                             'usia_hamil_id' => $riwayat->id,
+                            'hpht'          => $riwayat->hpht,
+                            'hpl'           => $riwayat->hpl,
+                            'usia_minggu'   => $usiaMgg,
+                            'keterangan'    => $keterangan,
                             'answered'      => $answered,
                             'total'         => $total,
                             'batch_no'      => (int)($draft->batch_no ?? 1),
@@ -722,7 +772,7 @@ class SkriningController extends Controller
                 }
 
                 // Buat session baru untuk kehamilan
-                $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $submittedCount, $activeToken) {
+                $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $submittedCount, $activeToken, $usiaMgg, $keterangan) {
                     $now = now();
                     $riwayatLock = UsiaHamil::lockForUpdate()->find($riwayat->id);
 
@@ -756,6 +806,10 @@ class SkriningController extends Controller
                             'type'          => 'kehamilan',
                             'trimester'     => $trimester,
                             'usia_hamil_id' => $riwayatLock->id,
+                            'hpht'          => $riwayatLock->hpht,
+                            'hpl'           => $riwayatLock->hpl,
+                            'usia_minggu'   => $usiaMgg,
+                            'keterangan'    => $keterangan,
                             'answered'      => 0,
                             'total'         => SkriningDass::count(),
                             'batch_no'      => (int)$session->batch_no,
@@ -938,7 +992,7 @@ class SkriningController extends Controller
                     return ['ack' => 'bad', 'message' => 'Belum ada jawaban yang disimpan', 'data' => null];
                 }
 
-                // Skoring DASS-21 (sama untuk kehamilan dan umum)
+                // Skoring DASS-21
                 $grpDep = [3, 5, 10, 13, 16, 17, 21];
                 $grpAnx = [2, 4, 7, 9, 15, 19, 20];
                 $grpStr = [1, 6, 8, 11, 12, 14, 18];
@@ -978,15 +1032,23 @@ class SkriningController extends Controller
                     'stress'     => $sev($sumStr, 'stress'),
                 ];
 
-                // Advice berdasarkan apakah kehamilan atau umum
+                // === PESAN YANG DIPERBAIKI ===
                 $isPregnancy = !empty($seed->usia_hamil_id);
-                $advice = 'Hasil berada dalam rentang normal.';
+                $allNormal = ($levels['depression'] === 'Normal' && $levels['anxiety'] === 'Normal' && $levels['stress'] === 'Normal');
 
-                if ($levels['depression'] !== 'Normal' || $levels['anxiety'] !== 'Normal' || $levels['stress'] !== 'Normal') {
+                if ($allNormal) {
+                    // HASIL BAIK
                     if ($isPregnancy) {
-                        $advice = 'Pertimbangkan konsultasi dengan bidan, dokter kandungan, atau psikolog untuk mendapatkan dukungan yang tepat selama kehamilan.';
+                        $advice = '🎉 Selamat! Kondisi kesehatan mental Anda saat ini baik. Tidak terdeteksi gejala depresi, kecemasan, atau stres yang signifikan. Tetap jaga keseimbangan dengan istirahat cukup, olahraga ringan, dan dukungan keluarga. 📅 Lakukan skrining ulang pada trimester berikutnya atau jika merasa ada perubahan kondisi emosional.';
                     } else {
-                        $advice = 'Pertimbangkan edukasi kesehatan jiwa, teknik relaksasi/napas, sleep hygiene, dan diskusi dengan tenaga kesehatan.';
+                        $advice = '🎉 Selamat! Hasil skrining menunjukkan kondisi kesehatan mental Anda dalam rentang normal. Tidak terdeteksi gejala depresi, kecemasan, atau stres yang signifikan. Tetap jaga kesehatan mental dengan pola hidup sehat, istirahat cukup, dan aktivitas yang menyenangkan. 📅 Skrining ulang disarankan 1 bulan kemudian atau saat merasa ada perubahan kondisi emosional.';
+                    }
+                } else {
+                    // ADA INDIKASI
+                    if ($isPregnancy) {
+                        $advice = 'Terdeteksi adanya gejala pada satu atau lebih dimensi. Pertimbangkan konsultasi dengan bidan, dokter kandungan, atau psikolog untuk mendapatkan dukungan yang tepat selama kehamilan.';
+                    } else {
+                        $advice = 'Terdeteksi adanya gejala pada satu atau lebih dimensi. Pertimbangkan edukasi kesehatan jiwa, teknik relaksasi/napas, sleep hygiene, dan diskusi dengan tenaga kesehatan.';
                     }
                 }
 
@@ -1017,6 +1079,41 @@ class SkriningController extends Controller
                     }
                 }
 
+                // === HITUNG JADWAL SKRINING BERIKUTNYA ===
+                $nextSchedule = null;
+                $nextScheduleText = null;
+
+                if ($seed->usia_hamil_id) {
+                    $usiaHamil = UsiaHamil::find($seed->usia_hamil_id);
+
+                    if ($usiaHamil && $usiaHamil->hpht) {
+                        $hpht = Carbon::parse($usiaHamil->hpht);
+                        $hpl = $usiaHamil->hpl ? Carbon::parse($usiaHamil->hpl) : null;
+
+                        // Ambil semua trimester yang sudah disubmit untuk ibu ini
+                        // Untuk DASS kehamilan, gunakan trimester
+                        $submittedTrimesters = HasilDass::where('ibu_id', $seed->ibu_id)
+                            ->where('status', 'submitted')
+                            ->whereNotNull('trimester')
+                            ->pluck('trimester')
+                            ->unique()
+                            ->values()
+                            ->all();
+
+                        // Gunakan fungsi yang sama dengan dashboard
+                        $nextScheduleData = $this->computeNextScreeningSchedule($hpht, $hpl, $submittedTrimesters);
+
+                        if ($nextScheduleData) {
+                            $nextSchedule = $nextScheduleData['date']?->format('Y-m-d');
+                            $nextScheduleText = $nextScheduleData['phase'];
+                        }
+                    }
+                } elseif (!$isPregnancy) {
+                    // Untuk skrining umum (non-kehamilan), jadwalkan 1 bulan kemudian
+                    $nextSchedule = now()->addMonth()->format('Y-m-d');
+                    $nextScheduleText = 'Kontrol Rutin';
+                }
+
                 return [
                     'ack' => 'ok',
                     'message' => 'Skrining tersubmit.',
@@ -1030,6 +1127,9 @@ class SkriningController extends Controller
                         'trimester' => $seed->trimester,
                         'periode'   => $seed->periode,
                         'batch_no'  => (int)$seed->batch_no,
+                        'all_normal' => $allNormal,
+                        'next_schedule' => $nextSchedule,
+                        'next_schedule_text' => $nextScheduleText,
                     ]
                 ];
             });
@@ -1123,5 +1223,63 @@ class SkriningController extends Controller
                 'data' => null
             ], 200);
         }
+    }
+    private function computeNextScreeningSchedule(?Carbon $hpht, ?Carbon $hpl, array $submittedByTrimester): ?array
+    {
+        if (!$hpht) return null;
+        $now = Carbon::now();
+
+        $t1 = $hpht->copy();
+        $t2 = $hpht->copy()->addWeeks(14);
+        $t3 = $hpht->copy()->addWeeks(28);
+        $pp = $hpl?->copy() ?? $hpht->copy()->addWeeks(40);
+
+        $phases = [
+            ['code' => 'trimester_1', 'name' => 'Trimester I',   'start' => $t1],
+            ['code' => 'trimester_2', 'name' => 'Trimester II',  'start' => $t2],
+            ['code' => 'trimester_3', 'name' => 'Trimester III', 'start' => $t3],
+            ['code' => 'pasca_hamil', 'name' => 'Pasca Melahirkan',   'start' => $pp],
+        ];
+
+        $currentCode = null;
+        try {
+            $usiaMingguNow = Kehamilan::hitungUsiaMinggu($hpht->toDateString());
+            $currentCode = Kehamilan::tentukanTrimester($usiaMingguNow, $hpl?->toDateString());
+        } catch (\Throwable $e) {
+            $currentCode = null;
+        }
+
+        $current = $currentCode ? collect($phases)->firstWhere('code', $currentCode) : null;
+
+        if ($current && !in_array($current['code'], $submittedByTrimester, true)) {
+            return [
+                'phase'      => $current['name'],
+                'code'       => $current['code'],
+                'date'       => $now,
+                'date_human' => $now->translatedFormat('d M Y'),
+                'is_now'     => true,
+            ];
+        }
+
+        $ordered = collect($phases)->sortBy(fn($p) => $p['start']->timestamp)->values();
+        $startIndex = 0;
+        if ($current) {
+            $startIndex = max(0, $ordered->search(fn($p) => $p['code'] === $current['code']) + 1);
+        }
+
+        for ($i = $startIndex; $i < $ordered->count(); $i++) {
+            $p = $ordered[$i];
+            if (!in_array($p['code'], $submittedByTrimester, true)) {
+                return [
+                    'phase'      => $p['name'],
+                    'code'       => $p['code'],
+                    'date'       => $p['start'],
+                    'date_human' => $p['start']->translatedFormat('d M Y'),
+                    'is_now'     => $p['start']->isSameDay($now) || $p['start']->lessThan($now),
+                ];
+            }
+        }
+
+        return null;
     }
 }

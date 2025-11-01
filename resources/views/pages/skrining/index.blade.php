@@ -64,34 +64,118 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-6">
+                <!-- Card EPDS -->
                 <button type="button" onclick="window.selectSkrining('epds')"
-                    class="group relative overflow-hidden rounded-2xl border p-5 md:p-7 bg-gradient-to-br from-[#e7fff8] to-white hover:shadow-lg transition">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                    x-data="{ showTooltip: false }"
+                    class="group relative overflow-hidden rounded-2xl border p-5 md:p-7 bg-gradient-to-br from-[#e7fff8] to-white hover:shadow-lg transition text-left">
+                    
+                    <!-- Tooltip Icon -->
+                    <div class="absolute top-4 right-4 z-10"
+                        @mouseenter="showTooltip = true"
+                        @mouseleave="showTooltip = false"
+                        @click.stop>
+                        <div class="relative">
+                            <div class="w-6 h-6 rounded-full bg-teal-100 flex items-center justify-center cursor-help hover:bg-teal-200 transition">
+                                <svg class="w-4 h-4 text-teal-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            
+                            <!-- Tooltip Content -->
+                            <div x-show="showTooltip"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 scale-90"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-90"
+                                class="absolute right-0 top-8 w-64 bg-gray-900 text-white text-xs rounded-lg shadow-xl p-3 z-50"
+                                style="display: none;">
+                                <div class="relative">
+                                    <div class="absolute -top-4 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                                    <p class="font-semibold mb-1">EPDS (Edinburgh Postnatal Depression Scale)</p>
+                                    <p class="text-gray-300">Alat skrining standar internasional untuk mendeteksi risiko gangguan suasana hati pada ibu hamil dan menyusui. Dikembangkan oleh Cox et al. (1987).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center flex-shrink-0">
                             <svg class="w-6 h-6 text-teal-600" viewBox="0 0 24 24" fill="none">
                                 <path d="M4 6h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zM7 10h10M7 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
                         </div>
-                        <div>
-                            <div class="text-lg font-semibold text-gray-900 text-left">Skrining EPDS</div>
-                            <p class="text-sm text-gray-600">10 Pertanyaan • 3–5 menit</p>
-                            <p class="text-xs text-gray-500">Khusus ibu hamil & menyusui</p>
+                        <div class="flex-1">
+                            <div class="text-lg font-semibold text-gray-900">Skrining EPDS</div>
+                            <p class="text-sm text-gray-600 mt-0.5">10 Pertanyaan • 3–5 menit</p>
+                            <p class="text-xs text-gray-500 mb-2">Khusus ibu hamil & menyusui</p>
+                            
+                            <!-- Deskripsi Singkat -->
+                            <div class="mt-3 pt-3 border-t border-teal-100">
+                                <p class="text-xs md:text-sm text-gray-700 leading-relaxed">
+                                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 mr-2"></span>
+                                    Digunakan untuk mengetahui apakah Bunda mengalami tanda-tanda <strong>perubahan suasana hati setelah melahirkan</strong> atau <strong>penyesuaian emosional pasca melahirkan</strong>.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </button>
 
+                <!-- Card DASS-21 -->
                 <button type="button" onclick="window.selectSkrining('dass')"
-                    class="group relative overflow-hidden rounded-2xl border p-5 md:p-7 bg-gradient-to-br from-[#eaf5ff] to-white hover:shadow-lg transition">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center">
+                    x-data="{ showTooltip: false }"
+                    class="group relative overflow-hidden rounded-2xl border p-5 md:p-7 bg-gradient-to-br from-[#eaf5ff] to-white hover:shadow-lg transition text-left">
+                    
+                    <!-- Tooltip Icon -->
+                    <div class="absolute top-4 right-4 z-10"
+                        @mouseenter="showTooltip = true"
+                        @mouseleave="showTooltip = false"
+                        @click.stop>
+                        <div class="relative">
+                            <div class="w-6 h-6 rounded-full bg-sky-100 flex items-center justify-center cursor-help hover:bg-sky-200 transition">
+                                <svg class="w-4 h-4 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            
+                            <!-- Tooltip Content -->
+                            <div x-show="showTooltip"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 scale-90"
+                                x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-90"
+                                class="absolute right-0 top-8 w-64 bg-gray-900 text-white text-xs rounded-lg shadow-xl p-3 z-50"
+                                style="display: none;">
+                                <div class="relative">
+                                    <div class="absolute -top-4 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                                    <p class="font-semibold mb-1">DASS-21 (Depression Anxiety Stress Scales)</p>
+                                    <p class="text-gray-300">Instrumen pengukuran komprehensif untuk menilai tingkat depresi, kecemasan, dan stres. Cocok untuk populasi umum maupun ibu hamil. Dikembangkan oleh Lovibond & Lovibond (1995).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center flex-shrink-0">
                             <svg class="w-6 h-6 text-sky-600" viewBox="0 0 24 24" fill="none">
                                 <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                             </svg>
                         </div>
-                        <div>
-                            <div class="text-lg font-semibold text-gray-900 text-left">Skrining DASS-21</div>
-                            <p class="text-sm text-gray-600">21 Pertanyaan • 5–8 menit</p>
-                            <p class="text-xs text-gray-500">Otomatis sesuai kondisi Anda</p>
+                        <div class="flex-1">
+                            <div class="text-lg font-semibold text-gray-900">Skrining DASS-21</div>
+                            <p class="text-sm text-gray-600 mt-0.5">21 Pertanyaan • 5–8 menit</p>
+                            <p class="text-xs text-gray-500 mb-2">Otomatis sesuai kondisi Anda</p>
+                            
+                            <!-- Deskripsi Singkat -->
+                            <div class="mt-3 pt-3 border-t border-sky-100">
+                                <p class="text-xs md:text-sm text-gray-700 leading-relaxed">
+                                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-sky-500 mr-2"></span>
+                                    Mengukur tingkat <strong>stres, kecemasan, dan ketegangan</strong> yang mungkin sedang Bunda rasakan. <span class="text-gray-500">(Dapat digunakan oleh siapa pun)</span>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </button>
@@ -102,32 +186,7 @@
         <div id="form-skrining" class="mt-6 pb-24 md:pb-0 max-w-3xl mx-auto" style="display:none;">
             <div class="bg-white rounded-2xl border shadow-sm p-4 md:p-6 lg:p-8">
 
-                {{-- Info kehamilan --}}
-                @if(isset($usia_hamil))
-                @php
-                $trimesterLabel = [
-                'trimester_1' => 'Trimester I',
-                'trimester_2' => 'Trimester II',
-                'trimester_3' => 'Trimester III',
-                'pasca_hamil' => 'Pasca Melahirkan',
-                ][$usia_hamil['trimester']] ?? \Illuminate\Support\Str::headline($usia_hamil['trimester'] ?? '-');
-                @endphp
-                <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 md:p-4 text-amber-900">
-                    <div class="flex items-start gap-3">
-                        <svg class="w-5 h-5 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 9h2v6H9V9zm0-4h2v2H9V5z" />
-                        </svg>
-                        <div>
-                            <p class="font-semibold">Usia kehamilan saat ini</p>
-                            <p class="text-sm">{{ $usia_hamil['keterangan'] ?? '-' }} — <span class="font-medium">{{ $trimesterLabel }}</span></p>
-                            <p class="text-xs text-amber-800 mt-1">
-                                HPHT: {{ \Carbon\Carbon::parse($usia_hamil['hpht'])->translatedFormat('d M Y') }}
-                                • HPL: {{ \Carbon\Carbon::parse($usia_hamil['hpl'])->translatedFormat('d M Y') }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                @endif
+                <div id="divUsiaKehamilan"></div>
 
                 {{-- Badge skrining ke-N (rescreen) --}}
                 <div id="badge-batch" class="mb-3 hidden">
@@ -207,10 +266,15 @@
             <div class="bg-white p-6 rounded-2xl border shadow-sm text-center">
                 <h3 class="text-lg font-semibold mb-2 text-gray-800">Hasil Skrining EPDS</h3>
                 <p class="text-gray-600 mb-1">Skor Total</p>
-                <p id="res-score" class="text-6xl font-extrabold text-[#63b3ed] mb-4">0</p>
-                <p id="res-desc" class="text-gray-700 mb-6 text-sm">—</p>
+                <p id="res-score" class="text-6xl font-extrabold mb-4">0</p>
+                <p id="res-desc" class="text-gray-700 mb-4 text-sm font-semibold">—</p>
+                <div id="res-advice" class="text-gray-700 mb-6 text-sm">—</div>
+                
+                <!-- Jadwal Skrining Berikutnya -->
+                <div id="res-next-schedule" class="mb-6 hidden"></div>
+                
                 <div class="grid gap-3 md:grid-cols-2">
-                    <a href="{{ url('/materi/edukasi') }}" class="btn-primary w-full text-center">Lihat Materi Edukasi</a>
+                    <a href="{{ url('/edukasi') }}" class="btn-primary w-full text-center">Lihat Materi Edukasi</a>
                     <a href="{{ url('/') }}" class="btn-secondary w-full text-center">Kembali ke Beranda</a>
                 </div>
             </div>
@@ -220,27 +284,35 @@
         <div id="result-dass" class="mt-6 max-w-3xl mx-auto" style="display:none">
             <div class="bg-white p-6 rounded-2xl border shadow-sm">
                 <h3 class="text-lg font-semibold mb-4 text-center text-gray-800">Hasil Skrining DASS-21</h3>
-                <div class="grid md:grid-cols-3 gap-4 text-center">
-                    <div class="p-3 rounded-lg border bg-gray-50">
-                        <p class="text-xs text-gray-500 mb-1">Depresi</p>
-                        <p id="dass-dep-score" class="text-3xl font-bold">0</p>
-                        <p id="dass-dep-level" class="text-xs mt-1 text-gray-600">—</p>
+                
+                <!-- Grid Skor -->
+                <div class="grid md:grid-cols-3 gap-4 text-center mb-6">
+                    <div class="p-4 rounded-lg border bg-gray-50">
+                        <p class="text-xs text-gray-500 mb-2 font-medium">Depresi</p>
+                        <p id="dass-dep-score" class="text-4xl font-bold">0</p>
+                        <p id="dass-dep-level" class="text-xs mt-2 text-gray-600 font-semibold">—</p>
                     </div>
-                    <div class="p-3 rounded-lg border bg-gray-50">
-                        <p class="text-xs text-gray-500 mb-1">Kecemasan</p>
-                        <p id="dass-anx-score" class="text-3xl font-bold">0</p>
-                        <p id="dass-anx-level" class="text-xs mt-1 text-gray-600">—</p>
+                    <div class="p-4 rounded-lg border bg-gray-50">
+                        <p class="text-xs text-gray-500 mb-2 font-medium">Kecemasan</p>
+                        <p id="dass-anx-score" class="text-4xl font-bold">0</p>
+                        <p id="dass-anx-level" class="text-xs mt-2 text-gray-600 font-semibold">—</p>
                     </div>
-                    <div class="p-3 rounded-lg border bg-gray-50">
-                        <p class="text-xs text-gray-500 mb-1">Stres</p>
-                        <p id="dass-str-score" class="text-3xl font-bold">0</p>
-                        <p id="dass-str-level" class="text-xs mt-1 text-gray-600">—</p>
+                    <div class="p-4 rounded-lg border bg-gray-50">
+                        <p class="text-xs text-gray-500 mb-2 font-medium">Stres</p>
+                        <p id="dass-str-score" class="text-4xl font-bold">0</p>
+                        <p id="dass-str-level" class="text-xs mt-2 text-gray-600 font-semibold">—</p>
                     </div>
                 </div>
-                <div class="mt-6 text-sm text-gray-700 space-y-3">
-                    <p id="dass-summary">—</p>
-                    <div class="grid gap-3 md:grid-cols-2">
-                        <a href="{{ url('/materi/edukasi') }}" class="btn-primary w-full text-center">Lihat Materi Edukasi</a>
+                
+                <!-- Summary & Advice -->
+                <div class="text-sm text-gray-700 space-y-3">
+                    <div id="dass-summary">—</div>
+                    
+                    <!-- Jadwal Skrining Berikutnya -->
+                    <div id="dass-next-schedule" class="hidden"></div>
+                    
+                    <div class="grid gap-3 md:grid-cols-2 pt-4">
+                        <a href="{{ url('/edukasi') }}" class="btn-primary w-full text-center">Lihat Materi Edukasi</a>
                         <a href="{{ url('/') }}" class="btn-secondary w-full text-center">Kembali ke Beranda</a>
                     </div>
                 </div>
@@ -315,6 +387,13 @@
             window.SKRININGS = window.SKRININGS || {};
             SKRININGS.skrining = SKRININGS.skrining || {};
 
+            window.trimesterLabels = {
+                'trimester_1': 'Trimester I',
+                'trimester_2': 'Trimester II',
+                'trimester_3': 'Trimester III',
+                'pasca_hamil': 'Pasca Melahirkan'
+            };
+
             // Modal helpers (tetap)
             function openModal(name) {
                 window.dispatchEvent(new CustomEvent('open-modal', {
@@ -351,10 +430,40 @@
 
             // ===== Endpoint helpers (ikuti punyamu) =====
             async function startEpds() {
+                let divUsiaKehamilan = document.getElementById('divUsiaKehamilan');
+                divUsiaKehamilan.innerHTML = "";
                 const f = new Fetch("{{ route('epds.start') }}");
                 f.method = 'GET';
-                return await f.run();
+                let hasil = await f.run();
+                if(hasil.ack == "ok"){
+                    const trimLabel = trimesterLabels[hasil.data.trimester] || hasil.data.trimester.charAt(0).toUpperCase() + hasil.data.trimester.slice(1).replace('_', ' ');
+                    const hpht = new Date(hasil.data.hpht);
+                    const hpl = new Date(hasil.data.hpl);
+                    const formatDate = (date) => `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+                    const hphtFormatted = formatDate(hpht);
+                    const hplFormatted = formatDate(hpl);
+                    const content = `
+                        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 md:p-4 text-amber-900">
+                            <div class="flex items-start gap-3">
+                                <svg class="w-5 h-5 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 9h2v6H9V9zm0-4h2v2H9V5z" />
+                                </svg>
+                                <div>
+                                    <p class="font-semibold">Usia kehamilan saat ini</p>
+                                    <p class="text-sm">${hasil.data.keterangan || '-' } — <span class="font-medium">${trimLabel}</span></p>
+                                    <p class="text-xs text-amber-800 mt-1">
+                                        HPHT: ${hphtFormatted} • HPL: ${hplFormatted}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    divUsiaKehamilan.innerHTML = content;
+                }
+                return hasil;
             }
+
             async function postEpdsAnswer(epdsId, answersEpdsId) {
                 const form = document.getElementById('formEpdsAnswer');
                 form.session_token.value = S.sessionToken || '';
@@ -382,7 +491,34 @@
             async function startDass() {
                 const f = new Fetch("{{ route('dass.start') }}");
                 f.method = 'GET';
-                return await f.run();
+                let hasil = await f.run();
+                if(hasil.ack == "ok"){
+                    const trimLabel = trimesterLabels[hasil.data.trimester] || hasil.data.trimester.charAt(0).toUpperCase() + hasil.data.trimester.slice(1).replace('_', ' ');
+                    const hpht = new Date(hasil.data.hpht);
+                    const hpl = new Date(hasil.data.hpl);
+                    const formatDate = (date) => `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+                    const hphtFormatted = formatDate(hpht);
+                    const hplFormatted = formatDate(hpl);
+                    const content = `
+                        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 md:p-4 text-amber-900">
+                            <div class="flex items-start gap-3">
+                                <svg class="w-5 h-5 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 9h2v6H9V9zm0-4h2v2H9V5z" />
+                                </svg>
+                                <div>
+                                    <p class="font-semibold">Usia kehamilan saat ini</p>
+                                    <p class="text-sm">${hasil.data.keterangan || '-' } — <span class="font-medium">${trimLabel}</span></p>
+                                    <p class="text-xs text-amber-800 mt-1">
+                                        HPHT: ${hphtFormatted} • HPL: ${hplFormatted}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    divUsiaKehamilan.innerHTML = content;
+                }
+                return hasil;
             }
 
             SKRININGS.skrining.state.pendingScreeningType = null;
@@ -896,30 +1032,69 @@
             SKRININGS.skrining.showEpdsResult = function(payload) {
                 document.getElementById('form-skrining').style.display = 'none';
                 const total = Number(payload?.total_score ?? 0);
-                const risk = payload?.risk_title || '—';
                 const advice = payload?.advice || '';
+                const isRisk = payload?.is_risk || false;
                 const n = Number(S.batchNo || payload?.batch_no || 1);
                 const batchLabel = n > 1 ? ` (Skrining ke-${n})` : '';
+                
+                // Warna berbeda untuk hasil baik vs berisiko
+                const scoreColor = isRisk ? 'text-red-500' : 'text-green-500';
+                const borderColor = isRisk ? 'border-red-200' : 'border-green-200';
+                const bgColor = isRisk ? 'bg-red-50' : 'bg-green-50';
+                
                 document.getElementById('res-score').textContent = String(total);
-                document.getElementById('res-desc').textContent = `${risk}${batchLabel} — ${advice}`;
+                document.getElementById('res-score').className = `text-6xl font-extrabold ${scoreColor} mb-4`;
+                document.getElementById('res-desc').textContent = `${batchLabel}`;
+                
+                // Tampilkan advice dengan styling menarik
+                const adviceEl = document.getElementById('res-advice');
+                if (adviceEl) {
+                    adviceEl.innerHTML = advice;
+                    adviceEl.className = `text-gray-700 mb-6 text-sm ${bgColor} p-4 rounded-lg border ${borderColor}`;
+                }
+                
+                // Tampilkan jadwal skrining berikutnya
+                const scheduleEl = document.getElementById('res-next-schedule');
+                if (scheduleEl && payload?.next_schedule) {
+                    const schedDate = new Date(payload.next_schedule);
+                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    const formattedDate = schedDate.toLocaleDateString('id-ID', options);
+                    
+                    scheduleEl.innerHTML = `
+                        <div class="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                            </svg>
+                            <div class="flex-1">
+                                <p class="font-semibold text-blue-900 text-sm">Jadwal Skrining Berikutnya</p>
+                                <p class="text-blue-700 text-sm mt-1">
+                                    <strong>${payload.next_schedule_text || 'Skrining Rutin'}</strong><br>
+                                    <span class="text-xs">📅 Sekitar tanggal: ${formattedDate}</span>
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    scheduleEl.classList.remove('hidden');
+                } else if (scheduleEl) {
+                    scheduleEl.classList.add('hidden');
+                }
+                
                 document.getElementById('result-epds').style.display = 'block';
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
             // ===== Hasil DASS + popup =====
             SKRININGS.skrining.showDassResult = function(payload) {
                 document.getElementById('form-skrining').style.display = 'none';
                 
-                let sum, level, advice, flags, resultType;
+                let sum, level, advice, flags, resultType, allNormal;
                 if (payload && payload.sum) {
                     sum = payload.sum;
                     level = payload.level;
                     advice = payload.advice;
                     flags = payload.flags;
                     resultType = payload.type || 'umum';
+                    allNormal = payload.all_normal || false;
                 } else {
                     const r = computeDassResult();
                     sum = r.sum;
@@ -927,14 +1102,24 @@
                     advice = 'Hasil dalam rentang normal.';
                     flags = {};
                     resultType = S.dassType || 'umum';
+                    allNormal = true;
                 }
 
-                // Update skor
+                // Update skor dengan warna berbeda
+                const depColor = level.depression === 'Normal' ? 'text-green-600' : 'text-red-600';
+                const anxColor = level.anxiety === 'Normal' ? 'text-green-600' : 'text-yellow-600';
+                const strColor = level.stress === 'Normal' ? 'text-green-600' : 'text-orange-600';
+                
                 document.getElementById('dass-dep-score').textContent = String(sum.depression);
-                document.getElementById('dass-anx-score').textContent = String(sum.anxiety);
-                document.getElementById('dass-str-score').textContent = String(sum.stress);
+                document.getElementById('dass-dep-score').className = `text-3xl font-bold ${depColor}`;
                 document.getElementById('dass-dep-level').textContent = level.depression;
+                
+                document.getElementById('dass-anx-score').textContent = String(sum.anxiety);
+                document.getElementById('dass-anx-score').className = `text-3xl font-bold ${anxColor}`;
                 document.getElementById('dass-anx-level').textContent = level.anxiety;
+                
+                document.getElementById('dass-str-score').textContent = String(sum.stress);
+                document.getElementById('dass-str-score').className = `text-3xl font-bold ${strColor}`;
                 document.getElementById('dass-str-level').textContent = level.stress;
 
                 // Update summary dengan tipe yang jelas
@@ -943,27 +1128,56 @@
                 const typeLabel = resultType === 'kehamilan' ? ' - Deteksi Kehamilan' : ' - Deteksi Umum';
                 const trimesterInfo = payload?.trimester ? ` [${payload.trimester.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}]` : '';
                 
+                // Styling berbeda untuk hasil baik
+                const summaryBg = allNormal ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200';
+                
                 document.getElementById('dass-summary').innerHTML = 
-                    `<strong>DASS-21${typeLabel}${trimesterInfo}</strong>${batchLabel}<br>` +
-                    `Depresi: <span class="font-medium">${sum.depression}</span> (${level.depression}) • ` +
-                    `Kecemasan: <span class="font-medium">${sum.anxiety}</span> (${level.anxiety}) • ` +
-                    `Stres: <span class="font-medium">${sum.stress}</span> (${level.stress})<br>` +
-                    `<span class="text-gray-600 text-sm">${advice}</span>`;
+                    `<div class="p-4 rounded-lg border ${summaryBg}">
+                        <strong>DASS-21${typeLabel}${trimesterInfo}</strong>${batchLabel}<br>
+                        Depresi: <span class="font-medium">${sum.depression}</span> (${level.depression}) • 
+                        Kecemasan: <span class="font-medium">${sum.anxiety}</span> (${level.anxiety}) • 
+                        Stres: <span class="font-medium">${sum.stress}</span> (${level.stress})<br>
+                        <span class="text-gray-600 text-sm mt-2 block">${advice}</span>
+                    </div>`;
 
-                // Rekomendasi spesifik berdasarkan tipe dan kondisi
+                // Tampilkan jadwal skrining berikutnya
+                const scheduleEl = document.getElementById('dass-next-schedule');
+                if (scheduleEl && payload?.next_schedule) {
+                    const schedDate = new Date(payload.next_schedule);
+                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    const formattedDate = schedDate.toLocaleDateString('id-ID', options);
+                    
+                    scheduleEl.innerHTML = `
+                        <div class="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg mt-4">
+                            <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+                            </svg>
+                            <div class="flex-1">
+                                <p class="font-semibold text-blue-900 text-sm">Jadwal Skrining Berikutnya</p>
+                                <p class="text-blue-700 text-sm mt-1">
+                                    <strong>${payload.next_schedule_text || 'Skrining Rutin'}</strong><br>
+                                    <span class="text-xs">📅 Sekitar tanggal: ${formattedDate}</span>
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    scheduleEl.classList.remove('hidden');
+                } else if (scheduleEl) {
+                    scheduleEl.classList.add('hidden');
+                }
+
+                // Rekomendasi spesifik untuk kasus yang perlu perhatian
                 const msgs = [];
                 if (flags?.anxiety_alert || sum.anxiety >= 12) {
                     if (resultType === 'kehamilan') {
                         msgs.push(`
                             <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <strong class="text-amber-800">Kecemasan Tinggi (Kehamilan):</strong>
                                 <p class="text-amber-700 text-sm mt-1">Segera konsultasi dengan <strong>Bidan</strong>, <strong>Dokter Kandungan</strong>, atau <strong>Psikolog</strong> untuk mendapatkan dukungan yang aman selama kehamilan.</p>
                             </div>
                         `);
                     } else {
                         msgs.push(`
                             <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                <strong class="text-blue-800">Kecemasan Tinggi:</strong>
                                 <p class="text-blue-700 text-sm mt-1">Disarankan konsultasi dengan <strong>Bidan</strong> atau <strong>Psikolog</strong> untuk evaluasi lebih lanjut.</p>
                             </div>
                         `);
@@ -973,7 +1187,6 @@
                 if (flags?.depression_alert || sum.depression >= 15) {
                     msgs.push(`
                         <div class="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                            <strong class="text-purple-800">Depresi Terdeteksi:</strong>
                             <p class="text-purple-700 text-sm mt-1">Sangat disarankan konsultasi dengan <strong>Psikolog</strong> atau <strong>Dokter</strong> untuk evaluasi dan penanganan yang tepat.</p>
                         </div>
                     `);
@@ -983,14 +1196,12 @@
                     if (resultType === 'kehamilan') {
                         msgs.push(`
                             <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                <strong class="text-red-800">Stres Tinggi (Kehamilan):</strong>
                                 <p class="text-red-700 text-sm mt-1">Penting untuk segera konsultasi dengan <strong>Dokter Kandungan</strong> dan <strong>Psikolog</strong> untuk penanganan stres yang aman bagi ibu dan janin.</p>
                             </div>
                         `);
                     } else {
                         msgs.push(`
                             <div class="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                <strong class="text-orange-800">Stres Tinggi:</strong>
                                 <p class="text-orange-700 text-sm mt-1">Disarankan konsultasi dengan <strong>Dokter</strong> dan <strong>Psikolog</strong> untuk manajemen stres yang efektif.</p>
                             </div>
                         `);

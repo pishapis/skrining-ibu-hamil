@@ -1,7 +1,7 @@
 {{-- Sidebar (desktop) --}}
 <aside id="sidebar" class="hidden md:flex md:flex-col w-64 bg-white p-6 border-r border-gray-200 min-h-screen shadow-sm">
     <a href="{{ url('/') }}" class="p-4 mb-0 text-center cursor-pointer">
-        <img src="{{ asset('/assets/logos/simkeswa.png') }}" alt="Logo" class="mx-auto mb-4 rounded-full">
+        <img src="{{ asset('/assets/logos/simkeswa.png') }}" alt="Logo" class="mx-auto mb-4 w-[75%]">
     </a>
     <nav class="space-y-2">
         <!-- Menu untuk semua pengguna -->
