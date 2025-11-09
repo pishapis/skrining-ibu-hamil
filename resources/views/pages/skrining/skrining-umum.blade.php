@@ -212,37 +212,123 @@ return [
                             </div>
 
                             <h3 class="text-2xl md:text-3xl font-bold text-gray-800">Pilih Jenis Skrining</h3>
-                            <p class="text-sm text-gray-600 mt-1">Proses cepat & rahasia</p>
+                            <p class="text-sm text-gray-600 mt-1">Proses cepat & rahasia — pilih yang ingin Anda mulai</p>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-6">
+                            <!-- Card EPDS -->
                             <button type="button" onclick="window.startSkrining('epds')"
-                                class="group relative overflow-hidden rounded-2xl border p-5 md:p-7 bg-gradient-to-br from-[#e7fff8] to-white hover:shadow-lg transition">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                                x-data="{ showTooltip: false }"
+                                class="group relative overflow-hidden rounded-2xl border p-5 md:p-7 bg-gradient-to-br from-[#e7fff8] to-white hover:shadow-lg transition text-left">
+                                
+                                <!-- Tooltip Icon -->
+                                <div class="absolute top-4 right-4 z-10"
+                                    @mouseenter="showTooltip = true"
+                                    @mouseleave="showTooltip = false"
+                                    @click.stop>
+                                    <div class="relative">
+                                        <div class="w-6 h-6 rounded-full bg-teal-100 flex items-center justify-center cursor-help hover:bg-teal-200 transition">
+                                            <svg class="w-4 h-4 text-teal-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        
+                                        <!-- Tooltip Content -->
+                                        <div x-show="showTooltip"
+                                            x-transition:enter="transition ease-out duration-200"
+                                            x-transition:enter-start="opacity-0 scale-90"
+                                            x-transition:enter-end="opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-150"
+                                            x-transition:leave-start="opacity-100 scale-100"
+                                            x-transition:leave-end="opacity-0 scale-90"
+                                            class="absolute right-0 top-8 w-64 bg-gray-900 text-white text-xs rounded-lg shadow-xl p-3 z-50"
+                                            style="display: none;">
+                                            <div class="relative">
+                                                <div class="absolute -top-4 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                                                <p class="font-semibold mb-1">EPDS (Edinburgh Postnatal Depression Scale)</p>
+                                                <p class="text-gray-300">Alat skrining standar internasional untuk mendeteksi risiko gangguan suasana hati pada ibu hamil dan menyusui. Dikembangkan oleh Cox et al. (1987).</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-4">
+                                    <div class="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center flex-shrink-0">
                                         <svg class="w-6 h-6 text-teal-600" viewBox="0 0 24 24" fill="none">
                                             <path d="M4 6h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zM7 10h10M7 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                                         </svg>
                                     </div>
-                                    <div>
+                                    <div class="flex-1">
                                         <div class="text-lg font-semibold text-gray-900">Skrining EPDS</div>
-                                        <p class="text-sm text-gray-600">10 Pertanyaan • 3–5 menit</p>
+                                        <p class="text-sm text-gray-600 mt-0.5">10 Pertanyaan • 3–5 menit</p>
+                                        <p class="text-xs text-gray-500 mb-2">Khusus ibu hamil & menyusui</p>
+                                        
+                                        <!-- Deskripsi Singkat -->
+                                        <div class="mt-3 pt-3 border-t border-teal-100">
+                                            <p class="text-xs md:text-sm text-gray-700 leading-relaxed">
+                                                <span class="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 mr-2"></span>
+                                                Digunakan untuk mengetahui apakah Bunda mengalami tanda-tanda <strong>perubahan suasana hati setelah melahirkan</strong> atau <strong>penyesuaian emosional pasca melahirkan</strong>.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </button>
 
+                            <!-- Card DASS-21 -->
                             <button type="button" onclick="window.startSkrining('dass')"
-                                class="group relative overflow-hidden rounded-2xl border p-5 md:p-7 bg-gradient-to-br from-[#eaf5ff] to-white hover:shadow-lg transition">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center">
+                                x-data="{ showTooltip: false }"
+                                class="group relative overflow-hidden rounded-2xl border p-5 md:p-7 bg-gradient-to-br from-[#eaf5ff] to-white hover:shadow-lg transition text-left">
+                                
+                                <!-- Tooltip Icon -->
+                                <div class="absolute top-4 right-4 z-10"
+                                    @mouseenter="showTooltip = true"
+                                    @mouseleave="showTooltip = false"
+                                    @click.stop>
+                                    <div class="relative">
+                                        <div class="w-6 h-6 rounded-full bg-sky-100 flex items-center justify-center cursor-help hover:bg-sky-200 transition">
+                                            <svg class="w-4 h-4 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        
+                                        <!-- Tooltip Content -->
+                                        <div x-show="showTooltip"
+                                            x-transition:enter="transition ease-out duration-200"
+                                            x-transition:enter-start="opacity-0 scale-90"
+                                            x-transition:enter-end="opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-150"
+                                            x-transition:leave-start="opacity-100 scale-100"
+                                            x-transition:leave-end="opacity-0 scale-90"
+                                            class="absolute right-0 top-8 w-64 bg-gray-900 text-white text-xs rounded-lg shadow-xl p-3 z-50"
+                                            style="display: none;">
+                                            <div class="relative">
+                                                <div class="absolute -top-4 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+                                                <p class="font-semibold mb-1">DASS-21 (Depression Anxiety Stress Scales)</p>
+                                                <p class="text-gray-300">Instrumen pengukuran komprehensif untuk menilai tingkat suasana hati, kecemasan, dan stres. Cocok untuk populasi umum maupun ibu hamil. Dikembangkan oleh Lovibond & Lovibond (1995).</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-4">
+                                    <div class="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center flex-shrink-0">
                                         <svg class="w-6 h-6 text-sky-600" viewBox="0 0 24 24" fill="none">
                                             <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                                         </svg>
                                     </div>
-                                    <div>
+                                    <div class="flex-1">
                                         <div class="text-lg font-semibold text-gray-900">Skrining DASS-21</div>
-                                        <p class="text-sm text-gray-600">21 Pertanyaan • 5–8 menit</p>
+                                        <p class="text-sm text-gray-600 mt-0.5">21 Pertanyaan • 5–8 menit</p>
                                         <p class="text-xs text-sky-600 mt-1" id="dass-mode-label">Mode: Umum</p>
+                                        <p class="text-xs text-gray-500 mb-2">Otomatis sesuai kondisi Anda</p>
+                                        
+                                        <!-- Deskripsi Singkat -->
+                                        <div class="mt-3 pt-3 border-t border-sky-100">
+                                            <p class="text-xs md:text-sm text-gray-700 leading-relaxed">
+                                                <span class="inline-block w-1.5 h-1.5 rounded-full bg-sky-500 mr-2"></span>
+                                                Mengukur tingkat <strong>stres, kecemasan, dan ketegangan</strong> yang mungkin sedang Bunda rasakan. <span class="text-gray-500">(Dapat digunakan oleh siapa pun)</span>
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </button>

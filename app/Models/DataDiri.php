@@ -79,6 +79,11 @@ class DataDiri extends Model
         return $this->belongsTo(Puskesmas::class, 'puskesmas_id');
     }
 
+    public function usiaHamil(): HasOne
+    {
+        return $this->hasOne(UsiaHamil::class, 'ibu_id');
+    }
+
     public function faskes(): BelongsTo
     {
         return $this->belongsTo(FasilitasKesehatan::class, 'faskes_rujukan_id');

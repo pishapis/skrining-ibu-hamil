@@ -65,7 +65,7 @@ class ScreeningBarcodeController extends Controller
             $generatedLink = GeneratedLink::create([
                 'puskesmas_id' => $puskesmasId,
                 'original_url' => $url,
-                'qrCode'    => base64_encode($qrCodeData),
+                'qr_code' => base64_encode($qrCodeData),
                 'short_url' => $shortUrl,
                 'short_code' => $shortCode,
                 'token' => $token,
@@ -151,7 +151,7 @@ class ScreeningBarcodeController extends Controller
         $puskesmasId = Auth::user()->puskesmas_id;
 
         $query = GeneratedLink::query();
-        
+
         if ($puskesmasId) {
             $query->where('puskesmas_id', $puskesmasId);
         }
@@ -516,5 +516,64 @@ class ScreeningBarcodeController extends Controller
         }
 
         return true;
+    }
+
+    /**
+     * Show QR Code for specific link
+     */
+    public function showQRCode($id)
+    {
+        try {
+            $link = GeneratedLink::with('puskesmas')->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'qr_code' => $link->qr_code,
+                    'short_url' => $link->short_url,
+                    'puskesmas_name' => $link->puskesmas->nama,
+                    'created_at' => $link->created_at->format('d/m/Y'),
+                    'expires_at' => $link->expires_at ? $link->expires_at->format('d/m/Y') : null,
+                    'access_count' => $link->access_count
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'QR Code tidak ditemukan'
+            ], 404);
+        }
+    }
+
+    /**
+     * Delete link with QR Code
+     */
+    public function deleteLink($id)
+    {
+        try {
+            $link = GeneratedLink::findOrFail($id);
+
+            // Log sebelum delete untuk audit
+            Log::info('Link deleted', [
+                'short_code' => $link->short_code,
+                'puskesmas_id' => $link->puskesmas_id,
+                'deleted_by' => Auth::id()
+            ]);
+
+            // Delete akan otomatis menghapus qr_code karena ada di database
+            $link->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Link dan QR Code berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error deleting link: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus link'
+            ], 500);
+        }
     }
 }

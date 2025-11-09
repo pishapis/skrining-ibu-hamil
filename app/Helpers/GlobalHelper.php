@@ -45,7 +45,7 @@ function formatBulanTahun($input)
 
 function formatTanggal($input)
 {
-    if(!isset($input)) return;
+    if (!isset($input)) return;
     // Pecah string menjadi tahun, bulan, dan tanggal
     [$tahun, $bulan, $tanggal] = explode('-', $input);
 
@@ -82,7 +82,7 @@ function hitungUsiaKehamilanString($hpht)
     $hpht = Carbon::parse($hpht);  // Parsing tanggal yang benar
     $hariKehamilan = $hpht->diffInDays(Carbon::now()); // Selisih dalam hari
     $usiaKehamilanMinggu = $hariKehamilan / 7;  // Menghitung usia kehamilan dalam minggu, dengan desimal
-    
+
     // Menghitung minggu dan hari
     $minggu = floor($usiaKehamilanMinggu); // Minggu penuh
     $hari = round(($usiaKehamilanMinggu - $minggu) * 7); // Sisa hari
@@ -107,5 +107,45 @@ function tentukanTrimester($usiaKehamilan)
         return 'trimester_3';
     } else {
         return 'pasca_hamil';
+    }
+}
+
+function sendNotificationWhatsApp($phoneNumber, $message = null)
+{
+    if (empty($phoneNumber)) {
+        return;
+    }
+
+    try {
+        $phone = preg_replace('/^\+?0/', '62', $phoneNumber);
+
+        Log::info('Sending Notification:', ['phone' => $phone, 'message' => $message]);
+
+        $response = Http::post('https://app.whacenter.com/api/send', [
+            'device_id' => env('API_WA_CENTER'),
+            'number' => $phone,
+            'message' => $message,
+        ]);
+
+        if ($response->successful()) {
+            $responseBody = $response->json();
+
+            if (isset($responseBody['status']) && $responseBody['status'] !== true) {
+                Log::error('Failed to send Notification', ['response' => $responseBody]);
+                return;
+            }
+
+            return;
+        }
+
+        Log::error('Gagal kirim Notification', ['response' => $response->body()]);
+        return;
+    } catch (\Exception $e) {
+        Log::error('Exception saat mengirim Notification', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return;
     }
 }

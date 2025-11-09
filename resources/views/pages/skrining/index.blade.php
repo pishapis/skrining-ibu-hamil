@@ -152,7 +152,7 @@
                                 <div class="relative">
                                     <div class="absolute -top-4 right-2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
                                     <p class="font-semibold mb-1">DASS-21 (Depression Anxiety Stress Scales)</p>
-                                    <p class="text-gray-300">Instrumen pengukuran komprehensif untuk menilai tingkat depresi, kecemasan, dan stres. Cocok untuk populasi umum maupun ibu hamil. Dikembangkan oleh Lovibond & Lovibond (1995).</p>
+                                    <p class="text-gray-300">Instrumen pengukuran komprehensif untuk menilai tingkat suasana hati, kecemasan, dan stres. Cocok untuk populasi umum maupun ibu hamil. Dikembangkan oleh Lovibond & Lovibond (1995).</p>
                                 </div>
                             </div>
                         </div>
@@ -246,11 +246,11 @@
                 <div class="rounded-2xl border bg-white shadow-sm p-4 md:p-5">
                     <h4 class="font-semibold text-gray-900 mb-2">Tentang DASS-21</h4>
                     <p class="text-sm text-gray-700">
-                        DASS-21 berisi 21 pertanyaan untuk mengukur tingkat depresi, kecemasan, dan stres. 
+                        DASS-21 berisi 21 pertanyaan untuk mengukur tingkat suasana hati, kecemasan, dan stres. 
                         Sistem akan otomatis mendeteksi apakah Anda sedang hamil atau tidak untuk memberikan interpretasi yang sesuai dengan kondisi Anda.
                     </p>
                     <ul class="list-disc pl-5 text-sm text-gray-700 mt-2 space-y-1">
-                        <li>Depresi: Item 3, 5, 10, 13, 16, 17, 21 → jumlah ×2</li>
+                        <li>Gangguan Suasana Hati: Item 3, 5, 10, 13, 16, 17, 21 → jumlah ×2</li>
                         <li>Kecemasan: Item 2, 4, 7, 9, 15, 19, 20 → jumlah ×2</li>
                         <li>Stres: Item 1, 6, 8, 11, 12, 14, 18 → jumlah ×2</li>
                     </ul>
@@ -288,7 +288,7 @@
                 <!-- Grid Skor -->
                 <div class="grid md:grid-cols-3 gap-4 text-center mb-6">
                     <div class="p-4 rounded-lg border bg-gray-50">
-                        <p class="text-xs text-gray-500 mb-2 font-medium">Depresi</p>
+                        <p class="text-xs text-gray-500 mb-2 font-medium">Gangguan Suasana Hati</p>
                         <p id="dass-dep-score" class="text-4xl font-bold">0</p>
                         <p id="dass-dep-level" class="text-xs mt-2 text-gray-600 font-semibold">—</p>
                     </div>
@@ -1134,7 +1134,7 @@
                 document.getElementById('dass-summary').innerHTML = 
                     `<div class="p-4 rounded-lg border ${summaryBg}">
                         <strong>DASS-21${typeLabel}${trimesterInfo}</strong>${batchLabel}<br>
-                        Depresi: <span class="font-medium">${sum.depression}</span> (${level.depression}) • 
+                        Gangguan Suasana Hati: <span class="font-medium">${sum.depression}</span> (${level.depression}) • 
                         Kecemasan: <span class="font-medium">${sum.anxiety}</span> (${level.anxiety}) • 
                         Stres: <span class="font-medium">${sum.stress}</span> (${level.stress})<br>
                         <span class="text-gray-600 text-sm mt-2 block">${advice}</span>
