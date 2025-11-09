@@ -20,7 +20,7 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = User::where('id', Auth::user()->id)->firstOrFail();
 
         // === ROLE MAPPING ===
         $role = $this->mapRoleFromUser($user);
@@ -472,24 +472,42 @@ class DashboardController extends Controller
         if ($scope['type'] === 'facility' && !empty($scope['puskesmas_id'])) {
             $epdsQ->join('data_diri as dd', 'dd.id', '=', 'hasil_epds.ibu_id')
                 ->where('dd.puskesmas_id', $scope['puskesmas_id'])
-                ->whereNotNull('dd.faskes_rujukan_id');
+                ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
 
             $dassKehamilanQ->join('data_diri as dd', 'dd.id', '=', 'hasil_dass.ibu_id')
                 ->where('dd.puskesmas_id', $scope['puskesmas_id'])
-                ->whereNotNull('dd.faskes_rujukan_id');
+                ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
 
             $dassUmumQ->join('data_diri as dd', 'dd.id', '=', 'hasil_dass.ibu_id')
                 ->where('dd.puskesmas_id', $scope['puskesmas_id'])
-                ->whereNotNull('dd.faskes_rujukan_id');
+                ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
         } elseif ($scope['type'] === 'all') {
             $epdsQ->join('data_diri as dd', 'dd.id', '=', 'hasil_epds.ibu_id')
-                ->whereNotNull('dd.faskes_rujukan_id');
+                ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
 
             $dassKehamilanQ->join('data_diri as dd', 'dd.id', '=', 'hasil_dass.ibu_id')
-                ->whereNotNull('dd.faskes_rujukan_id');
+                ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
 
             $dassUmumQ->join('data_diri as dd', 'dd.id', '=', 'hasil_dass.ibu_id')
-                ->whereNotNull('dd.faskes_rujukan_id');
+                ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
         }
 
         return [
@@ -515,7 +533,10 @@ class DashboardController extends Controller
                 $j->on('uh.ibu_id', '=', 't.ibu_id')->on('uh.created_at', '=', 't.max_created');
             })
             ->join('data_diri as dd', 'dd.id', '=', 'uh.ibu_id')
-            ->whereNotNull('dd.faskes_rujukan_id');
+            ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
 
         if ($scope['type'] === 'facility' && !empty($scope['puskesmas_id'])) {
             $uh->where('dd.puskesmas_id', $scope['puskesmas_id']);
@@ -579,7 +600,10 @@ class DashboardController extends Controller
                     ->whereNotNull('uh.hpht')
                     ->whereNotNull('uh.hpl');
             })
-            ->whereNotNull('dd.faskes_rujukan_id');
+            ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
 
         if ($scope['type'] === 'facility' && !empty($scope['puskesmas_id'])) {
             $epds->where('dd.puskesmas_id', $scope['puskesmas_id']);
@@ -617,7 +641,10 @@ class DashboardController extends Controller
                     ->whereNotNull('uh.hpht')
                     ->whereNotNull('uh.hpl');
             })
-            ->whereNotNull('dd.faskes_rujukan_id');
+            ->where(function ($query) {
+                    $query->whereNotNull('faskes_rujukan_id')
+                        ->orWhereNotNull('puskesmas_id');
+                });
 
         if ($scope['type'] === 'facility' && !empty($scope['puskesmas_id'])) {
             $dass->where('dd.puskesmas_id', $scope['puskesmas_id']);

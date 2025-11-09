@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class EducationContentController extends Controller
 {
@@ -336,6 +337,9 @@ class EducationContentController extends Controller
         $sort = $append ? (int)($content->media()->max('sort_order') ?? -1) + 1 : 0;
         $videoMediaIds = [];
 
+        // Ukuran minimum untuk kompresi (30MB dalam bytes)
+        $minCompressionSize = 30 * 1024 * 1024; // 30MB
+
         // images
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $img) {
@@ -355,12 +359,12 @@ class EducationContentController extends Controller
             }
         }
 
-        // videos - DISPATCH TO QUEUE
+        // videos - CHECK SIZE BEFORE COMPRESSION
         if ($request->hasFile('videos')) {
             foreach ($request->file('videos') as $vid) {
                 if (!$vid) continue;
 
-                // Store original video
+                $fileSize = $vid->getSize(); // Get file size in bytes
                 $vpath = $vid->store('edu', 'public');
 
                 // Create media record
@@ -371,14 +375,27 @@ class EducationContentController extends Controller
                     'alt'        => $content->title,
                     'mime'       => $vid->getMimeType(),
                     'sort_order' => $sort++,
-                    'processing_status' => 'pending',
-                    'processing_progress' => 0,
+                    'processing_status' => $fileSize >= $minCompressionSize ? 'pending' : 'completed',
+                    'processing_progress' => $fileSize >= $minCompressionSize ? 0 : 100,
                 ]);
 
                 $videoMediaIds[] = $media->id;
 
-                // Dispatch compression job
-                CompressVideoJob::dispatch($media->id, $vpath);
+                // Only dispatch compression job if file is >= 30MB
+                if ($fileSize >= $minCompressionSize) {
+                    CompressVideoJob::dispatch($media->id, $vpath);
+                    Log::info("Video queued for compression", [
+                        'media_id' => $media->id,
+                        'size' => round($fileSize / (1024 * 1024), 2) . 'MB'
+                    ]);
+                } else {
+                    // Generate thumbnail only for small videos
+                    $this->generateThumbnailForSmallVideo($media, $vpath);
+                    Log::info("Video skipped compression (< 30MB)", [
+                        'media_id' => $media->id,
+                        'size' => round($fileSize / (1024 * 1024), 2) . 'MB'
+                    ]);
+                }
             }
         }
 
@@ -399,6 +416,65 @@ class EducationContentController extends Controller
         }
 
         return $videoMediaIds;
+    }
+
+    private function generateThumbnailForSmallVideo(EducationMedia $media, string $videoPath): void
+    {
+        try {
+            $fullPath = Storage::disk('public')->path($videoPath);
+
+            if (!file_exists($fullPath)) {
+                Log::warning("Video file not found for thumbnail generation: {$fullPath}");
+                return;
+            }
+
+            $isProduction = config('app.env') === 'production';
+
+            $ffmpegBinary = $isProduction
+                ? config('services.ffmpeg.binaries_prod', env('FFMPEG_BINARIES_PROD', '/usr/bin/ffmpeg'))
+                : config('services.ffmpeg.binaries_dev', env('FFMPEG_BINARIES_DEV', 'C:/ffmpeg/bin/ffmpeg.exe'));
+
+            $ffprobeBinary = $isProduction
+                ? config('services.ffmpeg.probe_prod', env('FFPROBE_BINARIES_PROD', '/usr/bin/ffprobe'))
+                : config('services.ffmpeg.probe_dev', env('FFPROBE_BINARIES_DEV', 'C:/ffmpeg/bin/ffprobe.exe'));
+
+            if (!file_exists($ffmpegBinary) || !file_exists($ffprobeBinary)) {
+                Log::warning("FFmpeg not found, skipping thumbnail generation");
+                return;
+            }
+
+            $ffmpeg = \FFMpeg\FFMpeg::create([
+                'ffmpeg.binaries'  => $ffmpegBinary,
+                'ffprobe.binaries' => $ffprobeBinary,
+                'timeout'          => 300,
+            ]);
+
+            $video = $ffmpeg->open($fullPath);
+
+            $fileName = pathinfo($fullPath, PATHINFO_FILENAME);
+            $thumbnailName = 'thumbnails/' . $fileName . '_thumb.jpg';
+            $thumbnailFullPath = Storage::disk('public')->path($thumbnailName);
+
+            $thumbnailDir = dirname($thumbnailFullPath);
+            if (!is_dir($thumbnailDir)) {
+                mkdir($thumbnailDir, 0755, true);
+            }
+
+            $frame = $video->frame(\FFMpeg\Coordinate\TimeCode::fromSeconds(2));
+            $frame->save($thumbnailFullPath);
+
+            $media->update(['thumbnail_path' => $thumbnailName]);
+
+            Log::info("Thumbnail generated for small video", [
+                'media_id' => $media->id,
+                'thumbnail' => $thumbnailName
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Failed to generate thumbnail for small video", [
+                'media_id' => $media->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     private function youtubeId(?string $url): ?string
