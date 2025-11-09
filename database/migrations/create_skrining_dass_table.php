@@ -9,7 +9,7 @@ return new class extends Migration {
         Schema::create('skrining_dass', function (Blueprint $table) {
             $table->id();
             $table->longText('pertanyaan');
-            $table->string('dimensi', 50); // contoh: "depresi", "ansietas", "stres"
+            $table->string('dimensi', 50);
             $table->timestamps();
         });
     }

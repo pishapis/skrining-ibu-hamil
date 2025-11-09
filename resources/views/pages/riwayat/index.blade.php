@@ -276,7 +276,7 @@
                 const num = (v) => (typeof v === 'number' ? v : parseFloat(v) || 0);
 
                 // Category helpers
-                const epdsSeverity = (total) => (Number(total ?? 0) >= 13) ? 'Risiko depresi (≥13)' : 'Tidak signifikan';
+                const epdsSeverity = (total) => (Number(total ?? 0) >= 13) ? 'Gangguan suasana hati (≥13)' : 'Tidak signifikan';
                 const dassDepLabel = (s) => {
                     const n = Number(s ?? -1);
                     if (n < 0) return '—';
@@ -387,6 +387,12 @@
                         date.textContent = row.date_human || '—';
                         top.append(badge, date);
 
+                        if (row.batch_no && row.batch_no > 1) {
+                            const batchBadge = el('span', 'text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium ml-2');
+                            batchBadge.textContent = `Ulang #${row.batch_no}`;
+                            badge.parentNode.appendChild(batchBadge);
+                        }
+
                         const body = el('div', 'text-sm text-gray-700');
                         
                         // Mode badge for DASS-21
@@ -469,6 +475,12 @@
                         tBadge.textContent = row.type;
                         tdType.appendChild(tBadge);
 
+                        if (row.batch_no && row.batch_no > 1) {
+                            const batchSpan = el('span', 'text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium ml-2');
+                            batchSpan.textContent = `Skrining ke-${row.batch_no}`;
+                            tdType.appendChild(batchSpan);
+                        }
+
                         const tdMode = el('td', 'px-4 py-3');
                         if (row.type === 'DASS-21') {
                             const jenisColor = row.jenis === 'kehamilan' ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700';
@@ -526,9 +538,9 @@
                 // Export functions (keeping original implementations)
                 function kategoriFromTotal(total, q10Score) {
                     if (num(q10Score) > 0) return 'Waspada: Pikiran Menyakiti Diri';
-                    if (total >= 13) return 'Kemungkinan Depresi (Tinggi)';
-                    if (total >= 10) return 'Kemungkinan Depresi (Sedang)';
-                    return 'Tidak Ada Risiko Depresi';
+                    if (total >= 13) return 'Gangguan suasana hati (Tinggi)';
+                    if (total >= 10) return 'Gangguan suasana hati (Sedang)';
+                    return 'Tidak Ada Risiko Gangguan';
                 }
 
                 function exportEpdsXlsx(epdsRows, answerEpds, fileName = 'Export_EPDS.xlsx') {
@@ -541,18 +553,49 @@
                         return;
                     }
 
-                    // 1) Bangun bank pertanyaan dari master jawaban (kelompok per epds_id)
+                    // Helper functions
+                    const safe = (v, d = '') => (v == null ? d : v);
+                    const num = (v) => (typeof v === 'number' ? v : parseFloat(v) || 0);
+                    
+                    const extractRTRW = (alamat = '') => {
+                        if (!alamat) return '';
+                        const re = /RT\s*0*(\d+)[^\dA-Za-z]+RW\s*0*(\d+)/i;
+                        const m = alamat.match(re);
+                        return m ? `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}` : '';
+                    };
+
+                    const formatTanggal = (tgl) => {
+                        if (!tgl) return '';
+                        try {
+                            const d = new Date(tgl);
+                            return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        } catch {
+                            return tgl;
+                        }
+                    };
+
+                    const formatRiwayatPenyakit = (riwayat) => {
+                        if (!riwayat) return '';
+                        try {
+                            const arr = typeof riwayat === 'string' ? JSON.parse(riwayat) : riwayat;
+                            return Array.isArray(arr) ? arr.join(', ') : '';
+                        } catch {
+                            return String(riwayat || '');
+                        }
+                    };
+
+                    // 1) Bangun bank pertanyaan dari master jawaban
                     const _groupAnsByQ = answerEpds.reduce((m, x) => {
                         (m[x.epds_id] = m[x.epds_id] || []).push(x);
                         return m;
                     }, {});
+                    
                     const byQuestion = Object.keys(_groupAnsByQ)
                         .map(k => {
                             const list = _groupAnsByQ[k];
                             const first = list[0] || {};
                             const epdsId = num(first.epds_id);
                             const qText = safe(first?.epds?.pertanyaan, `Pertanyaan ${epdsId || ''}`);
-                            // urutkan opsi desc by score (3..0)
                             const opts = [...list].sort((a, b) => num(b.score) - num(a.score))
                                 .map(o => `${o.score} : ${o.jawaban}`);
                             const headerText =
@@ -563,14 +606,14 @@
                             return {
                                 epds_id: epdsId,
                                 header: headerText,
-                                scoreByAnswerId: by(list, 'id'),
+                                scoreByAnswerId: list.reduce((m, x) => (m[x.id] = x, m), {}),
                             };
                         })
                         .sort((a, b) => (a.epds_id || 0) - (b.epds_id || 0));
 
                     const questionIds = byQuestion.map(q => q.epds_id);
 
-                    // 2) Normalisasi baris hasil menjadi per-sesi (kelompokkan per sesi)
+                    // 2) Group by session
                     const keyFor = (r) => {
                         const tok = (r.session_token || '').trim();
                         if (tok) return `tok:${tok}`;
@@ -582,39 +625,67 @@
                         return `fallback:${r.ibu_id || 'x'}|${r.screening_date || r.submitted_at || 'unknown'}`;
                     };
 
-                    const grouped = groupBy(epdsRows, x => keyFor(x));
+                    const groupBy = (arr, keyFn) => arr.reduce((m, x) => {
+                        const k = keyFn(x);
+                        (m[k] = m[k] || []).push(x);
+                        return m;
+                    }, {});
+
+                    const grouped = groupBy(epdsRows, keyFor);
+                    
                     const sessions = Object.keys(grouped).map(k => {
                         const list = grouped[k];
-                        // Ambil satu baris untuk identitas
                         const any = list[0] || {};
                         const tanggal = safe(any.screening_date || any.submitted_at || any.created_at, '');
                         
-                        // Expanded identity data - semua field dari data_diri
+                        // Data lengkap
                         const ident = {
+                            // Ibu
                             nama: safe(any.ibu_nama || any.nama_lengkap || any.nama, ''),
                             nik: safe(any.nik, ''),
                             tempat_lahir: safe(any.tempat_lahir, ''),
-                            tanggal_lahir: safe(any.tanggal_lahir, ''),
+                            tanggal_lahir: formatTanggal(any.tanggal_lahir),
                             pendidikan_terakhir: safe(any.pendidikan_terakhir, ''),
                             pekerjaan: safe(any.pekerjaan, ''),
                             agama: safe(any.agama, ''),
                             golongan_darah: safe(any.golongan_darah, ''),
                             alamat_rumah: safe(any.alamat_rumah, ''),
-                            is_luar_wilayah: safe(any.is_luar_wilayah, ''),
-                            kelurahan: safe(any.kelurahan_nama || any.alamat_kelurahan, ''),
-                            kecamatan: safe(any.kecamatan_nama || any.alamat_kecamatan, ''),
-                            kota: safe(any.kota_nama || any.kabupaten_nama, ''),
+                            is_luar_wilayah: safe(any.is_luar_wilayah === 1 || any.is_luar_wilayah === '1' ? 'Ya' : 'Tidak', ''),
+                            kelurahan: safe(any.kelurahan_nama, ''),
+                            kecamatan: safe(any.kecamatan_nama, ''),
+                            kota: safe(any.kota_nama, ''),
                             provinsi: safe(any.provinsi_nama, ''),
-                            rtrw: safe(any.rt_rw, '') || extractRTRW(any.alamat_rumah || ''),
+                            rtrw: extractRTRW(any.alamat_rumah || ''),
                             no_telp: safe(any.no_telp, ''),
                             no_jkn: safe(any.no_jkn, ''),
                             puskesmas: safe(any.puskesmas_nama, ''),
                             faskes_rujukan: safe(any.faskes_rujukan_nama, ''),
+                            
+                            // Suami
+                            suami_nama: safe(any.suami_nama, ''),
+                            suami_tempat_lahir: safe(any.suami_tempat_lahir, ''),
+                            suami_tanggal_lahir: formatTanggal(any.suami_tanggal_lahir),
+                            suami_pendidikan: safe(any.suami_pendidikan, ''),
+                            suami_pekerjaan: safe(any.suami_pekerjaan, ''),
+                            suami_agama: safe(any.suami_agama, ''),
+                            suami_no_telp: safe(any.suami_no_telp, ''),
+                            
+                            // Anak
+                            anak_nama: safe(any.anak_nama, ''),
+                            anak_tanggal_lahir: formatTanggal(any.anak_tanggal_lahir),
+                            anak_jenis_kelamin: safe(any.anak_jenis_kelamin, ''),
+                            anak_no_jkn: safe(any.anak_no_jkn, ''),
+                            anak_catatan: safe(any.anak_catatan, ''),
+                            
+                            // Riwayat Kesehatan
+                            kehamilan_ke: safe(any.kehamilan_ke, ''),
+                            jml_anak_lahir_hidup: safe(any.jml_anak_lahir_hidup, ''),
+                            riwayat_keguguran: safe(any.riwayat_keguguran, ''),
+                            riwayat_penyakit: formatRiwayatPenyakit(any.riwayat_penyakit),
                         };
 
                         const answers = {};
                         for (const row of list) {
-                            // skip baris ringkasan (epds_id null)
                             if (row.epds_id == null) continue;
                             const qid = num(row.epds_id);
                             const ansId = row.answers_epds_id;
@@ -638,96 +709,137 @@
                         };
                     });
 
-                    // 3) Susun AOA untuk SheetJS dengan header yang diperluas
+                    // 3) Susun AOA untuk SheetJS
                     const AOA = [];
-                    const HEADERS_IDENT = [
-                        'Tgl Skrining', 'Nama Lengkap', 'NIK', 'Tempat Lahir', 'Tanggal Lahir',
-                        'Pendidikan Terakhir', 'Pekerjaan', 'Agama', 'Golongan Darah', 
-                        'Alamat Rumah', 'Luar Wilayah', 'Kelurahan', 'Kecamatan', 'Kota/Kabupaten', 
-                        'Provinsi', 'RT/RW', 'No Telp', 'No JKN', 'Puskesmas', 'Faskes Rujukan'
+                    const HEADERS = [
+                        // Screening
+                        'Tgl Skrining',
+                        
+                        // Data Ibu
+                        'Nama Lengkap', 'NIK', 'Tempat Lahir', 'Tanggal Lahir',
+                        'Pendidikan Terakhir', 'Pekerjaan', 'Agama', 'Golongan Darah',
+                        'Alamat Rumah', 'Luar Wilayah', 'Kelurahan', 'Kecamatan', 
+                        'Kota/Kabupaten', 'Provinsi', 'RT/RW', 
+                        'No Telp', 'No JKN', 'Puskesmas', 'Faskes Rujukan',
+                        
+                        // Data Suami
+                        'Nama Suami', 'Tempat Lahir Suami', 'Tanggal Lahir Suami',
+                        'Pendidikan Suami', 'Pekerjaan Suami', 'Agama Suami', 'No Telp Suami',
+                        
+                        // Data Anak
+                        'Nama Anak', 'Tanggal Lahir Anak', 'Jenis Kelamin Anak',
+                        'No JKN Anak', 'Catatan Anak',
+                        
+                        // Riwayat Kesehatan
+                        'Kehamilan Ke', 'Jumlah Anak Lahir Hidup', 
+                        'Riwayat Keguguran', 'Riwayat Penyakit',
+                        
+                        // Pertanyaan EPDS
+                        ...byQuestion.map(q => q.header),
+                        
+                        // Total
+                        'JUMLAH', 'KATEGORI'
                     ];
-                    const HEADERS_Q = byQuestion.map(q => q.header);
-                    const HEADERS_TAIL = ['JUMLAH', 'KATEGORI'];
-                    AOA.push([...HEADERS_IDENT, ...HEADERS_Q, ...HEADERS_TAIL]);
+                    
+                    AOA.push(HEADERS);
 
                     for (const s of sessions) {
-                        const colsIdent = [
-                            safe(s.tanggal, ''),
-                            safe(s.ident?.nama, ''),
-                            safe(s.ident?.nik, ''),
-                            safe(s.ident?.tempat_lahir, ''),
-                            safe(s.ident?.tanggal_lahir, ''),
-                            safe(s.ident?.pendidikan_terakhir, ''),
-                            safe(s.ident?.pekerjaan, ''),
-                            safe(s.ident?.agama, ''),
-                            safe(s.ident?.golongan_darah, ''),
-                            safe(s.ident?.alamat_rumah, ''),
-                            safe(s.ident?.is_luar_wilayah === 1 || s.ident?.is_luar_wilayah === '1' ? 'Ya' : 'Tidak', ''),
-                            safe(s.ident?.kelurahan, ''),
-                            safe(s.ident?.kecamatan, ''),
-                            safe(s.ident?.kota, ''),
-                            safe(s.ident?.provinsi, ''),
-                            safe(s.ident?.rtrw, ''),
-                            safe(s.ident?.no_telp, ''),
-                            safe(s.ident?.no_jkn, ''),
-                            safe(s.ident?.puskesmas, ''),
-                            safe(s.ident?.faskes_rujukan, ''),
+                        const row = [
+                            // Screening
+                            formatTanggal(s.tanggal),
+                            
+                            // Data Ibu
+                            s.ident.nama,
+                            s.ident.nik,
+                            s.ident.tempat_lahir,
+                            s.ident.tanggal_lahir,
+                            s.ident.pendidikan_terakhir,
+                            s.ident.pekerjaan,
+                            s.ident.agama,
+                            s.ident.golongan_darah,
+                            s.ident.alamat_rumah,
+                            s.ident.is_luar_wilayah,
+                            s.ident.kelurahan,
+                            s.ident.kecamatan,
+                            s.ident.kota,
+                            s.ident.provinsi,
+                            s.ident.rtrw,
+                            s.ident.no_telp,
+                            s.ident.no_jkn,
+                            s.ident.puskesmas,
+                            s.ident.faskes_rujukan,
+                            
+                            // Data Suami
+                            s.ident.suami_nama,
+                            s.ident.suami_tempat_lahir,
+                            s.ident.suami_tanggal_lahir,
+                            s.ident.suami_pendidikan,
+                            s.ident.suami_pekerjaan,
+                            s.ident.suami_agama,
+                            s.ident.suami_no_telp,
+                            
+                            // Data Anak
+                            s.ident.anak_nama,
+                            s.ident.anak_tanggal_lahir,
+                            s.ident.anak_jenis_kelamin,
+                            s.ident.anak_no_jkn,
+                            s.ident.anak_catatan,
+                            
+                            // Riwayat Kesehatan
+                            s.ident.kehamilan_ke,
+                            s.ident.jml_anak_lahir_hidup,
+                            s.ident.riwayat_keguguran,
+                            s.ident.riwayat_penyakit,
                         ];
 
+                        // Scores
                         const scores = questionIds.map(qid => num(s.answers?.[qid]?.score));
                         const total = scores.reduce((a, b) => a + num(b), 0);
                         const q10 = s.answers?.[10]?.score ?? s.answers?.[questionIds[9]]?.score;
                         const kategori = kategoriFromTotal(total, q10);
 
-                        AOA.push([...colsIdent, ...scores, total, kategori]);
+                        row.push(...scores, total, kategori);
+                        AOA.push(row);
                     }
 
-                    // 4) SheetJS: Workbook + styling
+                    // 4) Create workbook
                     const wb = XLSX.utils.book_new();
                     const ws = XLSX.utils.aoa_to_sheet(AOA);
 
-                    // Lebar kolom yang disesuaikan
+                    // Column widths
                     const questionColWidth = 48;
                     ws['!cols'] = [
                         { wch: 18 }, // tgl
-                        { wch: 28 }, // nama
-                        { wch: 20 }, // nik
-                        { wch: 18 }, // tempat lahir
-                        { wch: 15 }, // tanggal lahir
-                        { wch: 18 }, // pendidikan
-                        { wch: 18 }, // pekerjaan
-                        { wch: 12 }, // agama
-                        { wch: 12 }, // golongan darah
-                        { wch: 35 }, // alamat rumah
-                        { wch: 12 }, // luar wilayah
-                        { wch: 20 }, // kelurahan
-                        { wch: 18 }, // kecamatan
-                        { wch: 20 }, // kota
-                        { wch: 18 }, // provinsi
-                        { wch: 12 }, // RT/RW
-                        { wch: 15 }, // no telp
-                        { wch: 20 }, // no jkn
-                        { wch: 25 }, // puskesmas
-                        { wch: 25 }, // faskes rujukan
+                        // Ibu
+                        { wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 15 },
+                        { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 12 },
+                        { wch: 35 }, { wch: 12 }, { wch: 20 }, { wch: 18 },
+                        { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 15 },
+                        { wch: 20 }, { wch: 25 }, { wch: 25 },
+                        // Suami
+                        { wch: 25 }, { wch: 18 }, { wch: 15 }, { wch: 18 },
+                        { wch: 18 }, { wch: 12 }, { wch: 15 },
+                        // Anak
+                        { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 30 },
+                        // Riwayat
+                        { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 40 },
+                        // Questions
                         ...byQuestion.map(() => ({ wch: questionColWidth })),
-                        { wch: 10 }, // JUMLAH
-                        { wch: 28 }, // KATEGORI
+                        { wch: 10 }, { wch: 28 },
                     ];
 
-                    // Tinggi baris header agar wrap nyaman
                     ws['!rows'] = [{ hpt: 120 }];
 
-                    // Format angka untuk kolom skor + total
+                    // Format numbers
                     for (let r = 1; r < AOA.length; r++) {
-                        let cStart = HEADERS_IDENT.length;
-                        let cEnd = cStart + byQuestion.length; // eksklusif tail
-                        for (let c = cStart; c < cEnd + 1; c++) { // +1 untuk JUMLAH
+                        let cStart = 37; // Mulai dari kolom pertanyaan
+                        let cEnd = cStart + byQuestion.length;
+                        for (let c = cStart; c <= cEnd; c++) {
                             const addr = XLSX.utils.encode_cell({ r, c });
                             if (ws[addr]) ws[addr].z = '0';
                         }
                     }
 
-                    // Border & header style
                     styleTable(ws, AOA, 'B4A7D6');
 
                     XLSX.utils.book_append_sheet(wb, ws, 'EPDS');
@@ -735,9 +847,6 @@
                 }
 
                 function exportDassXlsx(dassRows, skriningDass, answerDass, fileName = 'Export_DASS.xlsx') {
-                    console.log("🚀 ~ exportDassXlsx ~ dassRows:", dassRows);
-                    console.log("🚀 ~ exportDassXlsx ~ answerDass:", answerDass);
-                    
                     if (!Array.isArray(dassRows) || dassRows.length === 0) {
                         alert('Data DASS kosong.');
                         return;
@@ -747,20 +856,9 @@
                         return;
                     }
 
-                    // ===== helpers =====
+                    // Helper functions
                     const safe = (v, d = '') => (v == null ? d : v);
                     const num = (v) => (typeof v === 'number' ? v : parseFloat(v) || 0);
-                    const groupByFn = (arr, keyFn) => arr.reduce((m, x) => {
-                        const k = keyFn(x);
-                        (m[k] = m[k] || []).push(x);
-                        return m;
-                    }, {});
-                    
-                    // Buat mapping answers_dass_id -> score untuk lookup cepat
-                    const answerScoreMap = {};
-                    (answerDass || []).forEach(a => {
-                        answerScoreMap[a.id] = num(a.score);
-                    });
                     
                     const extractRTRW = (alamat = '') => {
                         if (!alamat) return '';
@@ -768,38 +866,45 @@
                         const m = alamat.match(re);
                         return m ? `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}` : '';
                     };
-                    
-                    const styleTable = (ws, AOA, headerColorHex = 'B4A7D6') => {
-                        const rows = AOA.length;
-                        const cols = AOA[0]?.length || 0;
-                        const white = { rgb: 'FFFFFF' };
-                        const border = { style: 'thin', color: { rgb: 'CCCCCC' } };
-                        for (let r = 0; r < rows; r++) {
-                            for (let c = 0; c < cols; c++) {
-                                const addr = XLSX.utils.encode_cell({ r, c });
-                                ws[addr] = ws[addr] || { v: '' };
-                                ws[addr].s = ws[addr].s || {};
-                                ws[addr].s.border = {
-                                    top: border, bottom: border, left: border, right: border
-                                };
-                                if (r === 0) {
-                                    ws[addr].s.fill = { fgColor: { rgb: headerColorHex } };
-                                    ws[addr].s.font = { bold: true, color: white };
-                                    ws[addr].s.alignment = {
-                                        horizontal: 'center', vertical: 'top', wrapText: true
-                                    };
-                                } else {
-                                    ws[addr].s.alignment = ws[addr].s.alignment || { vertical: 'center' };
-                                }
-                            }
+
+                    const formatTanggal = (tgl) => {
+                        if (!tgl) return '';
+                        try {
+                            const d = new Date(tgl);
+                            return d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        } catch {
+                            return tgl;
                         }
                     };
 
-                    // ===== 1) Header per pertanyaan =====
+                    const formatRiwayatPenyakit = (riwayat) => {
+                        if (!riwayat) return '';
+                        try {
+                            const arr = typeof riwayat === 'string' ? JSON.parse(riwayat) : riwayat;
+                            return Array.isArray(arr) ? arr.join(', ') : '';
+                        } catch {
+                            return String(riwayat || '');
+                        }
+                    };
+
+                    const groupByFn = (arr, keyFn) => arr.reduce((m, x) => {
+                        const k = keyFn(x);
+                        (m[k] = m[k] || []).push(x);
+                        return m;
+                    }, {});
+                    
+                    // Score mapping
+                    const answerScoreMap = {};
+                    (answerDass || []).forEach(a => {
+                        answerScoreMap[a.id] = num(a.score);
+                    });
+
+                    // 1) Build question headers
                     const ansG = (answerDass || []).reduce((m, a) => {
                         (m[a.dass_id] = m[a.dass_id] || []).push(a);
                         return m;
                     }, {});
+                    
                     const questionIds = [...skriningDass].map(q => q.id).sort((a, b) => a - b);
 
                     const byQuestion = questionIds.map(id => {
@@ -817,7 +922,7 @@
                         return { id, header, scoreMap };
                     });
 
-                    // ===== 2) Group per sesi =====
+                    // 2) Group by session
                     const keyFor = (r) => {
                         const tok = (r.session_token || '').trim();
                         if (tok) return `tok:${tok}`;
@@ -830,7 +935,7 @@
 
                     const grouped = groupByFn(dassRows, keyFor);
 
-                    // mapping item → subskala (DASS-21)
+                    // DASS-21 subscales
                     const DEP = new Set([3, 5, 10, 13, 16, 17, 21]);
                     const ANX = new Set([2, 4, 7, 9, 15, 19, 20]);
                     const STR = new Set([1, 6, 8, 11, 12, 14, 18]);
@@ -838,27 +943,50 @@
                     const sessions = Object.entries(grouped).map(([k, list]) => {
                         const any = list[0] || {};
                         
-                        // Expanded identity data
+                        // Data lengkap
                         const ident = {
+                            // Ibu
                             nama: safe(any.ibu_nama || any.nama_lengkap || any.nama, ''),
                             nik: safe(any.nik, ''),
                             tempat_lahir: safe(any.tempat_lahir, ''),
-                            tanggal_lahir: safe(any.tanggal_lahir, ''),
+                            tanggal_lahir: formatTanggal(any.tanggal_lahir),
                             pendidikan_terakhir: safe(any.pendidikan_terakhir, ''),
                             pekerjaan: safe(any.pekerjaan, ''),
                             agama: safe(any.agama, ''),
                             golongan_darah: safe(any.golongan_darah, ''),
                             alamat_rumah: safe(any.alamat_rumah, ''),
-                            is_luar_wilayah: safe(any.is_luar_wilayah, ''),
-                            kelurahan: safe(any.kelurahan_nama || any.alamat_kelurahan, ''),
-                            kecamatan: safe(any.kecamatan_nama || any.alamat_kecamatan, ''),
-                            kota: safe(any.kota_nama || any.kabupaten_nama, ''),
+                            is_luar_wilayah: safe(any.is_luar_wilayah === 1 || any.is_luar_wilayah === '1' ? 'Ya' : 'Tidak', ''),
+                            kelurahan: safe(any.kelurahan_nama, ''),
+                            kecamatan: safe(any.kecamatan_nama, ''),
+                            kota: safe(any.kota_nama, ''),
                             provinsi: safe(any.provinsi_nama, ''),
-                            rtrw: safe(any.rt_rw, '') || extractRTRW(any.alamat_rumah || ''),
+                            rtrw: extractRTRW(any.alamat_rumah || ''),
                             no_telp: safe(any.no_telp, ''),
                             no_jkn: safe(any.no_jkn, ''),
                             puskesmas: safe(any.puskesmas_nama, ''),
                             faskes_rujukan: safe(any.faskes_rujukan_nama, ''),
+                            
+                            // Suami
+                            suami_nama: safe(any.suami_nama, ''),
+                            suami_tempat_lahir: safe(any.suami_tempat_lahir, ''),
+                            suami_tanggal_lahir: formatTanggal(any.suami_tanggal_lahir),
+                            suami_pendidikan: safe(any.suami_pendidikan, ''),
+                            suami_pekerjaan: safe(any.suami_pekerjaan, ''),
+                            suami_agama: safe(any.suami_agama, ''),
+                            suami_no_telp: safe(any.suami_no_telp, ''),
+                            
+                            // Anak
+                            anak_nama: safe(any.anak_nama, ''),
+                            anak_tanggal_lahir: formatTanggal(any.anak_tanggal_lahir),
+                            anak_jenis_kelamin: safe(any.anak_jenis_kelamin, ''),
+                            anak_no_jkn: safe(any.anak_no_jkn, ''),
+                            anak_catatan: safe(any.anak_catatan, ''),
+                            
+                            // Riwayat Kesehatan
+                            kehamilan_ke: safe(any.kehamilan_ke, ''),
+                            jml_anak_lahir_hidup: safe(any.jml_anak_lahir_hidup, ''),
+                            riwayat_keguguran: safe(any.riwayat_keguguran, ''),
+                            riwayat_penyakit: formatRiwayatPenyakit(any.riwayat_penyakit),
                         };
 
                         const answers = {};
@@ -878,7 +1006,6 @@
                             const qid = Number(row.dass_id);
                             const ansId = row.answers_dass_id;
                             
-                            // Ambil score dari mapping atau dari row.score
                             let score = row.score;
                             if (score == null && ansId != null) {
                                 score = answerScoreMap[ansId] ?? 0;
@@ -887,7 +1014,7 @@
                             answers[qid] = { ansId, score: num(score) };
                         }
 
-                        // fallback: hitung dari jawaban (×2)
+                        // Fallback: calculate from answers (×2)
                         if (dep == null || anx == null || str == null) {
                             let sDep = 0, sAnx = 0, sStr = 0;
                             for (const qid of questionIds) {
@@ -910,19 +1037,38 @@
                         };
                     });
 
-                    // ===== 3) Bangun AOA =====
-                    const HEADERS_IDENT = [
-                        'Tgl Skrining', 'Nama Lengkap', 'NIK', 'Tempat Lahir', 'Tanggal Lahir',
-                        'Pendidikan Terakhir', 'Pekerjaan', 'Agama', 'Golongan Darah', 
-                        'Alamat Rumah', 'Luar Wilayah', 'Kelurahan', 'Kecamatan', 'Kota/Kabupaten', 
-                        'Provinsi', 'RT/RW', 'No Telp', 'No JKN', 'Puskesmas', 'Faskes Rujukan'
+                    // 3) Build AOA
+                    const HEADERS = [
+                        // Screening
+                        'Tgl Skrining',
+                        
+                        // Data Ibu
+                        'Nama Lengkap', 'NIK', 'Tempat Lahir', 'Tanggal Lahir',
+                        'Pendidikan Terakhir', 'Pekerjaan', 'Agama', 'Golongan Darah',
+                        'Alamat Rumah', 'Luar Wilayah', 'Kelurahan', 'Kecamatan',
+                        'Kota/Kabupaten', 'Provinsi', 'RT/RW',
+                        'No Telp', 'No JKN', 'Puskesmas', 'Faskes Rujukan',
+                        
+                        // Data Suami
+                        'Nama Suami', 'Tempat Lahir Suami', 'Tanggal Lahir Suami',
+                        'Pendidikan Suami', 'Pekerjaan Suami', 'Agama Suami', 'No Telp Suami',
+                        
+                        // Data Anak
+                        'Nama Anak', 'Tanggal Lahir Anak', 'Jenis Kelamin Anak',
+                        'No JKN Anak', 'Catatan Anak',
+                        
+                        // Riwayat Kesehatan
+                        'Kehamilan Ke', 'Jumlah Anak Lahir Hidup',
+                        'Riwayat Keguguran', 'Riwayat Penyakit',
+                        
+                        // Pertanyaan DASS
+                        ...byQuestion.map(q => q.header),
+                        
+                        // Totals
+                        'DEP', 'ANX', 'STR', 'KAT DEP', 'KAT ANX', 'KAT STR'
                     ];
-                    const HEADERS_Q = byQuestion.map(q => q.header);
-                    const HEADERS_TAIL = ['DEP', 'ANX', 'STR', 'KAT DEP', 'KAT ANX', 'KAT STR'];
 
-                    const AOA = [
-                        [...HEADERS_IDENT, ...HEADERS_Q, ...HEADERS_TAIL]
-                    ];
+                    const AOA = [HEADERS];
 
                     // Severity labels
                     const dassDepLabel = (n) => (n <= 9 ? 'Normal' : n <= 13 ? 'Ringan' : n <= 20 ? 'Sedang' : n <= 27 ? 'Berat' : 'Sangat Berat');
@@ -930,53 +1076,92 @@
                     const dassStrLabel = (n) => (n <= 14 ? 'Normal' : n <= 18 ? 'Ringan' : n <= 25 ? 'Sedang' : n <= 33 ? 'Berat' : 'Sangat Berat');
 
                     for (const s of sessions) {
-                        const colsIdent = [
-                            safe(s.tanggal, ''),
-                            safe(s.ident?.nama, ''),
-                            safe(s.ident?.nik, ''),
-                            safe(s.ident?.tempat_lahir, ''),
-                            safe(s.ident?.tanggal_lahir, ''),
-                            safe(s.ident?.pendidikan_terakhir, ''),
-                            safe(s.ident?.pekerjaan, ''),
-                            safe(s.ident?.agama, ''),
-                            safe(s.ident?.golongan_darah, ''),
-                            safe(s.ident?.alamat_rumah, ''),
-                            safe(s.ident?.is_luar_wilayah === 1 || s.ident?.is_luar_wilayah === '1' ? 'Ya' : 'Tidak', ''),
-                            safe(s.ident?.kelurahan, ''),
-                            safe(s.ident?.kecamatan, ''),
-                            safe(s.ident?.kota, ''),
-                            safe(s.ident?.provinsi, ''),
-                            safe(s.ident?.rtrw, ''),
-                            safe(s.ident?.no_telp, ''),
-                            safe(s.ident?.no_jkn, ''),
-                            safe(s.ident?.puskesmas, ''),
-                            safe(s.ident?.faskes_rujukan, ''),
+                        const row = [
+                            // Screening
+                            formatTanggal(s.tanggal),
+                            
+                            // Data Ibu
+                            s.ident.nama,
+                            s.ident.nik,
+                            s.ident.tempat_lahir,
+                            s.ident.tanggal_lahir,
+                            s.ident.pendidikan_terakhir,
+                            s.ident.pekerjaan,
+                            s.ident.agama,
+                            s.ident.golongan_darah,
+                            s.ident.alamat_rumah,
+                            s.ident.is_luar_wilayah,
+                            s.ident.kelurahan,
+                            s.ident.kecamatan,
+                            s.ident.kota,
+                            s.ident.provinsi,
+                            s.ident.rtrw,
+                            s.ident.no_telp,
+                            s.ident.no_jkn,
+                            s.ident.puskesmas,
+                            s.ident.faskes_rujukan,
+                            
+                            // Data Suami
+                            s.ident.suami_nama,
+                            s.ident.suami_tempat_lahir,
+                            s.ident.suami_tanggal_lahir,
+                            s.ident.suami_pendidikan,
+                            s.ident.suami_pekerjaan,
+                            s.ident.suami_agama,
+                            s.ident.suami_no_telp,
+                            
+                            // Data Anak
+                            s.ident.anak_nama,
+                            s.ident.anak_tanggal_lahir,
+                            s.ident.anak_jenis_kelamin,
+                            s.ident.anak_no_jkn,
+                            s.ident.anak_catatan,
+                            
+                            // Riwayat Kesehatan
+                            s.ident.kehamilan_ke,
+                            s.ident.jml_anak_lahir_hidup,
+                            s.ident.riwayat_keguguran,
+                            s.ident.riwayat_penyakit,
                         ];
+
+                        // Scores
                         const scores = questionIds.map(qid => num(s.answers?.[qid]?.score));
                         const dep = num(s.totals.dep);
                         const anx = num(s.totals.anx);
                         const str = num(s.totals.str);
 
-                        AOA.push([
-                            ...colsIdent,
+                        row.push(
                             ...scores,
                             dep, anx, str,
                             dassDepLabel(dep),
                             dassAnxLabel(anx),
-                            dassStrLabel(str),
-                        ]);
+                            dassStrLabel(str)
+                        );
+
+                        AOA.push(row);
                     }
 
-                    // ===== 4) SheetJS + styling =====
+                    // 4) Create workbook
                     const wb = XLSX.utils.book_new();
                     const ws = XLSX.utils.aoa_to_sheet(AOA);
 
                     const questionColWidth = 48;
                     ws['!cols'] = [
-                        { wch: 18 }, { wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 15 },
-                        { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 35 },
-                        { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 18 },
-                        { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 25 },
+                        { wch: 18 }, // tgl
+                        // Ibu
+                        { wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 15 },
+                        { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 12 },
+                        { wch: 35 }, { wch: 12 }, { wch: 20 }, { wch: 18 },
+                        { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 15 },
+                        { wch: 20 }, { wch: 25 }, { wch: 25 },
+                        // Suami
+                        { wch: 25 }, { wch: 18 }, { wch: 15 }, { wch: 18 },
+                        { wch: 18 }, { wch: 12 }, { wch: 15 },
+                        // Anak
+                        { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 30 },
+                        // Riwayat
+                        { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 40 },
+                        // Questions
                         ...byQuestion.map(() => ({ wch: questionColWidth })),
                         { wch: 8 }, { wch: 8 }, { wch: 8 },
                         { wch: 12 }, { wch: 12 }, { wch: 12 },
@@ -984,9 +1169,9 @@
 
                     ws['!rows'] = [{ hpt: 120 }];
 
-                    // Format angka
+                    // Format numbers
                     for (let r = 1; r < AOA.length; r++) {
-                        const cStart = HEADERS_IDENT.length;
+                        const cStart = 37; // Mulai dari kolom pertanyaan
                         const cEndScores = cStart + byQuestion.length;
                         for (let c = cStart; c <= cEndScores; c++) {
                             const addr = XLSX.utils.encode_cell({ r, c });

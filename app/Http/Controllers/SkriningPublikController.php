@@ -253,7 +253,7 @@ class SkriningPublikController extends Controller
                 $q10AgakSering = str_contains($q10Label, 'agak') && str_contains($q10Label, 'sering');
 
                 $isRisk = ($totalScore >= 13) || $q10AgakSering;
-                $riskTitle = $isRisk ? 'Terindikasi Depresi' : 'Tidak menunjukkan gejala signifikan';
+                $riskTitle = $isRisk ? 'Terindikasi Gangguan Suasana Hati' : 'Tidak menunjukkan gejala signifikan';
                 $advice = $isRisk
                     ? 'Lakukan pemeriksaan kesehatan jiwa untuk menegakkan diagnosis dan tata laksana sesuai kompetensi tenaga medis/tenaga kesehatan puskesmas (dokter, psikolog klinis, perawat).'
                     : 'Edukasi kesehatan jiwa dan/atau lakukan skrining ulang pada kunjungan ANC berikutnya (oleh bidan, perawat, dokter, psikolog klinis).';

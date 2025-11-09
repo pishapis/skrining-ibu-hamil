@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\DataDiri;
+use App\Models\Anak;
+use App\Models\Suami;
+use App\Models\RiwayatKesehatan;
 use App\Models\HasilEpds;
 use App\Models\HasilDass;
 use App\Models\UsiaHamil;
@@ -83,7 +86,7 @@ class RiwayatSkriningController extends Controller
         $answer_dass  = AnswerDass::all();
         $skrining_dass = SkriningDass::orderBy('id')->get();
 
-        // ======= EPDS: Ambil SEMUA baris detail (untuk export lengkap) =======
+        // ======= EPDS: Ambil SEMUA baris detail dengan relasi =======
         $epds_detail = HasilEpds::from('hasil_epds as he')
             ->leftJoin('data_diri as dd', 'dd.id', '=', 'he.ibu_id')
             ->leftJoin('usia_hamil as uh', function ($join) {
@@ -91,6 +94,9 @@ class RiwayatSkriningController extends Controller
                     ->whereNotNull('uh.hpht')
                     ->whereNotNull('uh.hpl');
             })
+            ->leftJoin('suami as sm', 'sm.ibu_id', '=', 'dd.id')
+            ->leftJoin('anak as an', 'an.ibu_id', '=', 'dd.id')
+            ->leftJoin('riwayat_kesehatan as rk', 'rk.ibu_id', '=', 'dd.id')
             ->leftJoin('indonesia_villages as kel', 'kel.code', '=', 'dd.kode_des')
             ->leftJoin('indonesia_districts as kec', 'kec.code', '=', 'dd.kode_kec')
             ->leftJoin('indonesia_cities as kota', 'kota.code', '=', 'dd.kode_kab')
@@ -113,7 +119,7 @@ class RiwayatSkriningController extends Controller
                 $monthStart && $monthEnd,
                 fn($q) => $q->whereBetween('he.screening_date', [$monthStart, $monthEnd])
             )
-             ->when(
+            ->when(
                 $jenisParam === 'kehamilan',
                 fn($q) => $q->whereNotNull('he.usia_hamil_id')->whereNotNull('he.trimester')
             )
@@ -124,6 +130,8 @@ class RiwayatSkriningController extends Controller
             ->where('he.status', 'submitted')
             ->select(
                 'he.*',
+                'he.batch_no',
+                // Data Diri Ibu
                 'dd.nama as ibu_nama',
                 'dd.nik',
                 'dd.tempat_lahir',
@@ -136,19 +144,41 @@ class RiwayatSkriningController extends Controller
                 'dd.is_luar_wilayah',
                 'dd.no_telp',
                 'dd.no_jkn',
+                // Wilayah
                 'kel.name as kelurahan_nama',
                 'kec.name as kecamatan_nama',
                 'kota.name as kota_nama',
                 'prov.name as provinsi_nama',
+                // Faskes
                 'pusk.nama as puskesmas_nama',
                 'faskes.nama as faskes_rujukan_nama',
+                // Usia Hamil
                 'uh.hpht',
-                'uh.hpl'
+                'uh.hpl',
+                // Suami
+                'sm.nama as suami_nama',
+                'sm.tempat_lahir as suami_tempat_lahir',
+                'sm.tanggal_lahir as suami_tanggal_lahir',
+                'sm.pendidikan_terakhir as suami_pendidikan',
+                'sm.pekerjaan as suami_pekerjaan',
+                'sm.agama as suami_agama',
+                'sm.no_telp as suami_no_telp',
+                // Anak
+                'an.nama as anak_nama',
+                'an.tanggal_lahir as anak_tanggal_lahir',
+                'an.jenis_kelamin as anak_jenis_kelamin',
+                'an.no_jkn as anak_no_jkn',
+                'an.catatan as anak_catatan',
+                // Riwayat Kesehatan
+                'rk.kehamilan_ke',
+                'rk.jml_anak_lahir_hidup',
+                'rk.riwayat_keguguran',
+                'rk.riwayat_penyakit'
             )
             ->orderBy('he.screening_date', 'desc')
             ->get();
 
-        // ======= DASS: Ambil SEMUA baris detail (untuk export lengkap) =======
+        // ======= DASS: Ambil SEMUA baris detail dengan relasi =======
         $dass_detail = HasilDass::from('hasil_dass as hd')
             ->leftJoin('data_diri as dd', 'dd.id', '=', 'hd.ibu_id')
             ->leftJoin('usia_hamil as uh', function ($join) {
@@ -156,6 +186,9 @@ class RiwayatSkriningController extends Controller
                     ->whereNotNull('uh.hpht')
                     ->whereNotNull('uh.hpl');
             })
+            ->leftJoin('suami as sm', 'sm.ibu_id', '=', 'dd.id')
+            ->leftJoin('anak as an', 'an.ibu_id', '=', 'dd.id')
+            ->leftJoin('riwayat_kesehatan as rk', 'rk.ibu_id', '=', 'dd.id')
             ->leftJoin('indonesia_villages as kel', 'kel.code', '=', 'dd.kode_des')
             ->leftJoin('indonesia_districts as kec', 'kec.code', '=', 'dd.kode_kec')
             ->leftJoin('indonesia_cities as kota', 'kota.code', '=', 'dd.kode_kab')
@@ -189,6 +222,8 @@ class RiwayatSkriningController extends Controller
             ->where('hd.status', 'submitted')
             ->select(
                 'hd.*',
+                'hd.batch_no',
+                // Data Diri Ibu
                 'dd.nama as ibu_nama',
                 'dd.nik',
                 'dd.tempat_lahir',
@@ -201,14 +236,36 @@ class RiwayatSkriningController extends Controller
                 'dd.is_luar_wilayah',
                 'dd.no_telp',
                 'dd.no_jkn',
+                // Wilayah
                 'kel.name as kelurahan_nama',
                 'kec.name as kecamatan_nama',
                 'kota.name as kota_nama',
                 'prov.name as provinsi_nama',
+                // Faskes
                 'pusk.nama as puskesmas_nama',
                 'faskes.nama as faskes_rujukan_nama',
+                // Usia Hamil
                 'uh.hpht',
-                'uh.hpl'
+                'uh.hpl',
+                // Suami
+                'sm.nama as suami_nama',
+                'sm.tempat_lahir as suami_tempat_lahir',
+                'sm.tanggal_lahir as suami_tanggal_lahir',
+                'sm.pendidikan_terakhir as suami_pendidikan',
+                'sm.pekerjaan as suami_pekerjaan',
+                'sm.agama as suami_agama',
+                'sm.no_telp as suami_no_telp',
+                // Anak
+                'an.nama as anak_nama',
+                'an.tanggal_lahir as anak_tanggal_lahir',
+                'an.jenis_kelamin as anak_jenis_kelamin',
+                'an.no_jkn as anak_no_jkn',
+                'an.catatan as anak_catatan',
+                // Riwayat Kesehatan
+                'rk.kehamilan_ke',
+                'rk.jml_anak_lahir_hidup',
+                'rk.riwayat_keguguran',
+                'rk.riwayat_penyakit'
             )
             ->orderBy('hd.screening_date', 'desc')
             ->get();
@@ -216,6 +273,7 @@ class RiwayatSkriningController extends Controller
         // ======= Group untuk tampilan (1 row per session) =======
         $epds_grouped = $epds_detail->groupBy('session_token')->map(function ($group) use ($usia_hamil) {
             $first = $group->first();
+            $ends = $group->sortByDesc('created_at')->first();
             $dt = Carbon::parse($first->screening_date);
 
             // Hitung usia kehamilan per ibu
@@ -237,6 +295,7 @@ class RiwayatSkriningController extends Controller
                 'date_iso'   => $dt->toDateString(),
                 'date_human' => $dt->translatedFormat('d M Y'),
                 'year'       => $dt->year,
+                'batch_no'   => $ends->batch_no,
                 'trimester'  => $first->trimester,
                 'scores'     => ['epds_total' => (int) ($first->total_score ?? 0)],
                 'usia_hamil' => !empty($usia_ibu) ? $usia_ibu : $usia_hamil,
@@ -246,6 +305,7 @@ class RiwayatSkriningController extends Controller
 
         $dass_grouped = $dass_detail->groupBy('session_token')->map(function ($group) use ($usia_hamil) {
             $first = $group->first();
+            $ends = $group->sortByDesc('created_at')->first();
             $dt = Carbon::parse($first->screening_date);
 
             $jenis = 'umum';
@@ -272,6 +332,7 @@ class RiwayatSkriningController extends Controller
                 'date_iso'   => $dt->toDateString(),
                 'date_human' => $dt->translatedFormat('d M Y'),
                 'year'       => $dt->year,
+                'batch_no'   => $ends->batch_no,
                 'trimester'  => $first->trimester,
                 'jenis'      => $jenis,
                 'scores'     => [

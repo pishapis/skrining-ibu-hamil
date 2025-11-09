@@ -41,8 +41,12 @@ class AuthenticatedSessionController extends Controller
 
         // Cari data diri berdasarkan NIK
         $dataDiri = DataDiri::where('nik', $request->nik)
-            ->whereNotNull('faskes_rujukan_id') // Pastikan ini data ibu, bukan admin
+            ->where(function ($query) {
+                $query->whereNotNull('faskes_rujukan_id')
+                    ->orWhereNotNull('puskesmas_id');
+            })
             ->first();
+
 
         if (!$dataDiri) {
             throw ValidationException::withMessages([

@@ -36,7 +36,11 @@ class DashboardController extends Controller
         $hpl = null;
 
         if ($user->isIbu()) {
-            $dataDiri = $user->dataDiri()->whereNotNull('faskes_rujukan_id')->first();
+            $dataDiri = $user->dataDiri()->where(function ($query) {
+            $query->whereNotNull('faskes_rujukan_id')
+                ->orWhereNotNull('puskesmas_id');
+        })
+        ->first();
 
             if ($dataDiri) {
                 $riwayat = UsiaHamil::where('ibu_id', $dataDiri->id)
@@ -169,12 +173,12 @@ class DashboardController extends Controller
         if ($user->isIbu()) {
             $dassFlags = ['dep' => 15, 'anx' => 12, 'stress' => 20];
             if ($latestEpds && (int)($latestEpds->total_score ?? 0) >= 13) {
-                $alerts[] = ['type' => 'warning', 'text' => 'Hasil EPDS terakhir mengindikasikan depresi. Pertimbangkan konsultasi.'];
+                $alerts[] = ['type' => 'warning', 'text' => 'Hasil EPDS terakhir menunjukkan gangguan suasana hati. Disarankan untuk berkonsultasi.'];
             }
             if ($latestDass) {
-                if ((int)($latestDass->total_anxiety ?? 0)   >= $dassFlags['anx'])    $alerts[] = ['type' => 'info', 'text' => 'Kecemasan tinggi. Konsultasi Bidan & Psikolog disarankan.'];
-                if ((int)($latestDass->total_depression ?? 0) >= $dassFlags['dep'])    $alerts[] = ['type' => 'info', 'text' => 'Depresi tinggi. Konsultasi Psikolog disarankan.'];
-                if ((int)($latestDass->total_stress ?? 0)    >= $dassFlags['stress']) $alerts[] = ['type' => 'info', 'text' => 'Stres tinggi. Konsultasi Dokter & Psikolog disarankan.'];
+                if ((int)($latestDass->total_anxiety ?? 0)   >= $dassFlags['anx'])    $alerts[] = ['type' => 'info', 'text' => 'Konsultasi Bidan & Psikolog disarankan.'];
+                if ((int)($latestDass->total_depression ?? 0) >= $dassFlags['dep'])    $alerts[] = ['type' => 'info', 'text' => 'Konsultasi Psikolog disarankan.'];
+                if ((int)($latestDass->total_stress ?? 0)    >= $dassFlags['stress']) $alerts[] = ['type' => 'info', 'text' => 'Konsultasi Dokter & Psikolog disarankan.'];
             }
         }
 

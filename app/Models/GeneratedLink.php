@@ -25,7 +25,7 @@ class GeneratedLink extends Model
         'last_accessed_at',
         'last_access_ip',
         'last_user_agent',
-        'qrCode'
+        'qr_code'
     ];
 
     protected $casts = [

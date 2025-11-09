@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use phpDocumentor\Reflection\PseudoTypes\LowercaseString;
 
 class SkriningController extends Controller
 {
@@ -197,12 +198,23 @@ class SkriningController extends Controller
         DB::beginTransaction();
         try {
             // Buat user dummy untuk keperluan skrining
+            $nameOriginal = $request->nama;
+            $name = mb_strtolower(trim($request->nama), 'UTF-8');
+            $middle = $name;
+
+            if (preg_match('/^\s*(\S+)(?:\s+(\S+))?/', $name, $m)) {
+                $middle = isset($m[2]) ? $m[2] : $m[1];
+            }
+
+            $middle = preg_replace('/[^a-z0-9]/', '', $middle);
+
             $user = User::create([
                 'email' => 'temp_' . $request->nik . '@skrining.temp',
                 'password' => bcrypt(Str::random(32)),
+                'name'         => $nameOriginal,
+                'username'     => $middle . Str::random(2),
                 'role_id' => 1, // role ibu
                 'puskesmas_id' => $request->puskesmas_id,
-                'is_temp' => true // flag untuk user sementara
             ]);
 
             // Buat data diri
@@ -351,11 +363,14 @@ class SkriningController extends Controller
             $submittedCount = HasilEpds::where('ibu_id', $data_diri->id)
                 ->where('trimester', $trimester)
                 ->where('status', 'submitted')
-                ->count();
+                ->select('batch_no')
+                ->first();
+
+            $batchNo = $submittedCount ? $submittedCount->batch_no + 1 : 1;
 
             // Jika sudah ada submitted, cek token aktif (bolehkan skrining ulang bila ada token & masih ada kuota)
             $activeToken = null;
-            if ($submittedCount > 0) {
+            if ($submittedCount && $batchNo > 0) {
                 $activeToken = RescreenToken::active()
                     ->where('ibu_id', $data_diri->id)
                     ->where('jenis', 'epds')
@@ -405,7 +420,7 @@ class SkriningController extends Controller
             }
 
             // === Atomic: buat session baru + stamp trimester ===
-            $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $submittedCount, $activeToken, $usiaMgg, $keterangan) {
+            $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $batchNo, $activeToken, $usiaMgg, $keterangan) {
                 $now = now();
 
                 $riwayatLock = UsiaHamil::lockForUpdate()->find($riwayat->id);
@@ -424,7 +439,7 @@ class SkriningController extends Controller
                     'started_at'       => $now,
                     'screening_date'   => $now,
                     'rescreen_token_id' => $activeToken?->id,           // <--- NEW
-                    'batch_no'         => $submittedCount + 1,         // <--- NEW
+                    'batch_no'         => $batchNo,         // <--- NEW
                 ]);
 
                 // stamp kolom trimester (kalau kosong)
@@ -554,9 +569,22 @@ class SkriningController extends Controller
                 // === PESAN YANG DIPERBAIKI ===
                 if ($isRisk) {
                     $advice = 'Segera lakukan konsultasi dengan bidan, dokter, psikolog klinis, atau perawat di puskesmas untuk pemeriksaan lanjutan dan mendapatkan dukungan yang tepat.';
+                    $textWa = "
+                    Halo! 👋 Ini adalah pesan otomatis dari sistem skrining kami. Berdasarkan hasil yang kami terima, kami menyarankan agar Anda segera berkonsultasi dengan bidan, dokter, psikolog klinis, atau perawat di puskesmas untuk pemeriksaan lanjutan dan mendapatkan dukungan yang tepat. 💬
+                    
+                    Harap dicatat bahwa pesan ini tidak dapat dibalas karena ini hanya chatbot. 😊
+                    Jaga kesehatan dan semangat selalu!
+                    ";
                 } else {
                     $advice = '🎉 Selamat! Kondisi kesehatan mental Anda saat ini baik. Tetap jaga kesehatan dengan istirahat cukup, makan bergizi, dan berbagi cerita dengan orang terdekat. 📅 Lakukan skrining ulang pada trimester berikutnya atau saat kontrol kehamilan rutin.';
+                    $textWa = "
+                    Halo! 👋 Ini adalah pesan otomatis dari sistem skrining kami. Berdasarkan hasil yang kami terima, 🎉 Selamat! Kondisi kesehatan mental Anda saat ini baik. Tetap jaga kesehatan dengan istirahat cukup, makan bergizi, dan berbagi cerita dengan orang terdekat. 📅 Lakukan skrining ulang pada trimester berikutnya atau saat kontrol kehamilan rutin.
+                    
+                    Harap dicatat bahwa pesan ini tidak dapat dibalas karena ini hanya chatbot. 😊
+                    Jaga kesehatan dan semangat selalu!
+                    ";
                 }
+
 
                 // Tutup semua baris di session ini
                 HasilEpds::where('session_token', $request->session_token)->update([
@@ -605,6 +633,13 @@ class SkriningController extends Controller
                             $nextScheduleText = $nextScheduleData['phase'];
                         }
                     }
+                }
+
+                $userId = Auth::user()->id;
+                $phone_number = DataDiri::where('user_id', $userId)->select('no_telp')->first();
+
+                if ($phone_number) {
+                    sendNotificationWhatsApp($phone_number->no_telp, $textWa);
                 }
 
                 return [
@@ -715,11 +750,14 @@ class SkriningController extends Controller
                 $submittedCount = HasilDass::where('ibu_id', $data_diri->id)
                     ->where('trimester', $trimester)
                     ->where('status', 'submitted')
-                    ->count();
+                    ->select('batch_no')
+                    ->first();
+
+                $batchNo = $submittedCount ? $submittedCount->batch_no + 1 : 1;
 
                 // Cek token aktif untuk kehamilan
                 $activeToken = null;
-                if ($submittedCount > 0) {
+                if ($submittedCount && $batchNo > 0) {
                     $activeToken = RescreenToken::active()
                         ->where('ibu_id', $data_diri->id)
                         ->where('jenis', 'dass')
@@ -772,7 +810,7 @@ class SkriningController extends Controller
                 }
 
                 // Buat session baru untuk kehamilan
-                $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $submittedCount, $activeToken, $usiaMgg, $keterangan) {
+                $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $batchNo, $activeToken, $usiaMgg, $keterangan) {
                     $now = now();
                     $riwayatLock = UsiaHamil::lockForUpdate()->find($riwayat->id);
 
@@ -785,7 +823,7 @@ class SkriningController extends Controller
                         'started_at'        => $now,
                         'screening_date'    => $now,
                         'rescreen_token_id' => $activeToken?->id,
-                        'batch_no'          => $submittedCount + 1,
+                        'batch_no'         => $batchNo,
                         // Kolom umum dikosongkan
                         'mode'              => 'kehamilan',
                         'periode'           => null,
@@ -826,11 +864,14 @@ class SkriningController extends Controller
                     ->where('mode', 'umum')
                     ->where('periode', $periode)
                     ->where('status', 'submitted')
-                    ->count();
+                    ->select('batch_no')
+                    ->first();
+
+                $batchNo = $submittedCount ? $submittedCount->batch_no + 1 : 1;
 
                 // Cek token aktif untuk umum
                 $activeToken = null;
-                if ($submittedCount > 0) {
+                if ($submittedCount && $batchNo > 0) {
                     $activeToken = RescreenToken::active()
                         ->where('ibu_id', $data_diri->id)
                         ->where('jenis', 'dass')
@@ -879,7 +920,7 @@ class SkriningController extends Controller
                 }
 
                 // Buat session baru untuk umum
-                $payload = DB::transaction(function () use ($data_diri, $periode, $submittedCount, $activeToken) {
+                $payload = DB::transaction(function () use ($data_diri, $periode, $batchNo, $activeToken) {
                     $now = now();
 
                     $session = HasilDass::create([
@@ -891,7 +932,7 @@ class SkriningController extends Controller
                         'started_at'        => $now,
                         'screening_date'    => $now,
                         'rescreen_token_id' => $activeToken?->id,
-                        'batch_no'          => $submittedCount + 1,
+                        'batch_no'          => $batchNo,
                         // Kolom kehamilan dikosongkan
                         'usia_hamil_id'     => null,
                         'trimester'         => null,
@@ -1039,18 +1080,43 @@ class SkriningController extends Controller
                 if ($allNormal) {
                     // HASIL BAIK
                     if ($isPregnancy) {
-                        $advice = '🎉 Selamat! Kondisi kesehatan mental Anda saat ini baik. Tidak terdeteksi gejala depresi, kecemasan, atau stres yang signifikan. Tetap jaga keseimbangan dengan istirahat cukup, olahraga ringan, dan dukungan keluarga. 📅 Lakukan skrining ulang pada trimester berikutnya atau jika merasa ada perubahan kondisi emosional.';
+                        $advice = '🎉 Selamat! Kondisi kesehatan mental Anda saat ini baik. Tetap jaga keseimbangan dengan istirahat cukup, olahraga ringan, dan dukungan keluarga. 📅 Lakukan skrining ulang pada trimester berikutnya atau jika merasa ada perubahan kondisi emosional.';
+                        $textWa = "
+                        Halo! 👋 Ini adalah pesan otomatis dari sistem skrining kami. 🎉 Selamat! Kondisi kesehatan mental Anda saat ini baik. Tetap jaga keseimbangan dengan istirahat cukup, olahraga ringan, dan dukungan keluarga. 📅 Lakukan skrining ulang pada trimester berikutnya atau jika merasa ada perubahan kondisi emosional.
+                        
+                        Harap dicatat bahwa pesan ini tidak dapat dibalas karena ini hanya chatbot. 😊
+                        Jaga kesehatan dan semangat selalu!
+                        ";
                     } else {
-                        $advice = '🎉 Selamat! Hasil skrining menunjukkan kondisi kesehatan mental Anda dalam rentang normal. Tidak terdeteksi gejala depresi, kecemasan, atau stres yang signifikan. Tetap jaga kesehatan mental dengan pola hidup sehat, istirahat cukup, dan aktivitas yang menyenangkan. 📅 Skrining ulang disarankan 1 bulan kemudian atau saat merasa ada perubahan kondisi emosional.';
+                        $advice = '🎉 Selamat! Hasil skrining menunjukkan kondisi kesehatan mental Anda dalam rentang normal. Tetap jaga kesehatan mental dengan pola hidup sehat, istirahat cukup, dan aktivitas yang menyenangkan. 📅 Skrining ulang disarankan 1 bulan kemudian atau saat merasa ada perubahan kondisi emosional.';
+                        $textWa = "
+                        Halo! 👋 Ini adalah pesan otomatis dari sistem skrining kami. 🎉 Selamat! Hasil skrining menunjukkan kondisi kesehatan mental Anda dalam rentang normal. Tetap jaga kesehatan mental dengan pola hidup sehat, istirahat cukup, dan aktivitas yang menyenangkan. 📅 Skrining ulang disarankan 1 bulan kemudian atau saat merasa ada perubahan kondisi emosional.
+                        
+                        Harap dicatat bahwa pesan ini tidak dapat dibalas karena ini hanya chatbot. 😊
+                        Jaga kesehatan dan semangat selalu!
+                        ";
                     }
                 } else {
                     // ADA INDIKASI
                     if ($isPregnancy) {
-                        $advice = 'Terdeteksi adanya gejala pada satu atau lebih dimensi. Pertimbangkan konsultasi dengan bidan, dokter kandungan, atau psikolog untuk mendapatkan dukungan yang tepat selama kehamilan.';
+                        $advice = 'Terdeteksi adanya gejala pada satu atau lebih dimensi. Kami menyarankan konsultasi dengan bidan, dokter kandungan, atau psikolog untuk mendapatkan dukungan yang tepat selama kehamilan.';
+                        $textWa = "
+                        Halo! 👋 Ini adalah pesan otomatis dari sistem skrining kami. Terdeteksi adanya gejala pada satu atau lebih dimensi. Kami menyarankan konsultasi dengan bidan, dokter kandungan, atau psikolog untuk mendapatkan dukungan yang tepat selama kehamilan.
+                        
+                        Harap dicatat bahwa pesan ini tidak dapat dibalas karena ini hanya chatbot. 😊
+                        Jaga kesehatan dan semangat selalu!
+                        ";
                     } else {
-                        $advice = 'Terdeteksi adanya gejala pada satu atau lebih dimensi. Pertimbangkan edukasi kesehatan jiwa, teknik relaksasi/napas, sleep hygiene, dan diskusi dengan tenaga kesehatan.';
+                        $advice = 'Terdeteksi adanya gejala pada satu atau lebih dimensi. Pertimbangkan untuk mempelajari teknik relaksasi/napas, sleep hygiene, dan berbicara dengan tenaga kesehatan untuk dukungan lebih lanjut.';
+                        $textWa = "
+                        Halo! 👋 Ini adalah pesan otomatis dari sistem skrining kami. Terdeteksi adanya gejala pada satu atau lebih dimensi. Pertimbangkan untuk mempelajari teknik relaksasi/napas, sleep hygiene, dan berbicara dengan tenaga kesehatan untuk dukungan lebih lanjut.
+                        
+                        Harap dicatat bahwa pesan ini tidak dapat dibalas karena ini hanya chatbot. 😊
+                        Jaga kesehatan dan semangat selalu!
+                        ";
                     }
                 }
+
 
                 $flags = [
                     'anxiety_alert'    => $sumAnx >= 12,
@@ -1112,6 +1178,13 @@ class SkriningController extends Controller
                     // Untuk skrining umum (non-kehamilan), jadwalkan 1 bulan kemudian
                     $nextSchedule = now()->addMonth()->format('Y-m-d');
                     $nextScheduleText = 'Kontrol Rutin';
+                }
+
+                $userId = Auth::user()->id;
+                $phone_number = DataDiri::where('user_id', $userId)->select('no_telp')->first();
+
+                if ($phone_number) {
+                    sendNotificationWhatsApp($phone_number->no_telp, $textWa);
                 }
 
                 return [
@@ -1281,5 +1354,328 @@ class SkriningController extends Controller
         }
 
         return null;
+    }
+
+    // Tambahkan di SkriningController.php
+
+    /**
+     * Start EPDS untuk user umum (via shortlink)
+     */
+    public function umumEpdsStart(Request $request)
+    {
+        $request->validate([
+            'ibu_id' => 'required|exists:data_diri,id'
+        ]);
+
+        try {
+            $data_diri = DataDiri::find($request->ibu_id);
+
+            if (!$data_diri) {
+                return response()->json(['ack' => 'bad', 'message' => 'Data diri tidak ditemukan', 'data' => null], 200);
+            }
+
+            $riwayat = UsiaHamil::where('ibu_id', $data_diri->id)
+                ->whereNotNull('hpht')->whereNotNull('hpl')->first();
+
+            if (!$riwayat) {
+                return response()->json([
+                    'ack' => 'need_hpht',
+                    'message' => 'HPHT belum diisi.',
+                    'data' => null
+                ], 200);
+            }
+
+            $usiaMgg   = hitungUsiaKehamilanMinggu($riwayat->hpht);
+            $trimester = tentukanTrimester($usiaMgg);
+            $keterangan  = hitungUsiaKehamilanString($riwayat->hpht);
+
+            $submittedCount = HasilEpds::where('ibu_id', $data_diri->id)
+                ->where('trimester', $trimester)
+                ->where('status', 'submitted')
+                ->select('batch_no')
+                ->first();
+
+            $batchNo = $submittedCount ? $submittedCount->batch_no + 1 : 1;
+
+            $draft = HasilEpds::where('ibu_id', $data_diri->id)
+                ->where('trimester', $trimester)
+                ->where('status', 'draft')
+                ->orderByDesc('started_at')
+                ->first();
+
+            if ($draft) {
+                $answered = HasilEpds::where('session_token', $draft->session_token)
+                    ->whereNotNull('epds_id')
+                    ->count();
+                $total = SkriningEpds::count();
+
+                return response()->json([
+                    'ack' => 'ok',
+                    'message' => 'Lanjutkan skrining yang tertunda.',
+                    'data' => [
+                        'session_token' => $draft->session_token,
+                        'trimester'     => $trimester,
+                        'usia_hamil_id' => $riwayat->id,
+                        'hpht'          => $riwayat->hpht,
+                        'hpl'           => $riwayat->hpl,
+                        'usia_minggu'   => $usiaMgg,
+                        'keterangan'    => $keterangan,
+                        'answered'      => $answered,
+                        'total'         => $total,
+                        'batch_no'      => (int)($draft->batch_no ?? 1),
+                    ]
+                ]);
+            }
+
+            $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $batchNo, $usiaMgg, $keterangan) {
+                $now = now();
+                $riwayatLock = UsiaHamil::lockForUpdate()->find($riwayat->id);
+
+                $session = HasilEpds::create([
+                    'ibu_id'           => $data_diri->id,
+                    'usia_hamil_id'    => $riwayatLock->id,
+                    'hpht'             => $riwayatLock->hpht,
+                    'hpl'              => $riwayatLock->hpl,
+                    'usia_minggu'      => $usiaMgg,
+                    'status'           => 'draft',
+                    'mode'             => 'kehamilan',
+                    'periode'          => null,
+                    'session_token'    => (string) Str::uuid(),
+                    'trimester'        => $trimester,
+                    'started_at'       => $now,
+                    'screening_date'   => $now,
+                    'batch_no'         => $batchNo,
+                ]);
+
+                if ($trimester === 'trimester_1' && !$riwayatLock->trimester_1) $riwayatLock->trimester_1 = $now;
+                if ($trimester === 'trimester_2' && !$riwayatLock->trimester_2) $riwayatLock->trimester_2 = $now;
+                if ($trimester === 'trimester_3' && !$riwayatLock->trimester_3) $riwayatLock->trimester_3 = $now;
+                if ($trimester === 'pasca_hamil' && !$riwayatLock->pasca_hamil) $riwayatLock->pasca_hamil = $now;
+                $riwayatLock->save();
+
+                $total = SkriningEpds::count();
+
+                return [
+                    'ack' => 'ok',
+                    'message' => 'Session skrining dimulai.',
+                    'data' => [
+                        'session_token'  => $session->session_token,
+                        'trimester'      => $trimester,
+                        'usia_hamil_id'  => $riwayatLock->id,
+                        'hpht'           => $riwayat->hpht,
+                        'hpl'            => $riwayat->hpl,
+                        'keterangan'     => $keterangan,
+                        'usia_minggu'    => $usiaMgg,
+                        'answered'       => 0,
+                        'total'          => $total,
+                        'batch_no'       => (int)$session->batch_no,
+                    ]
+                ];
+            });
+
+            return response()->json($payload);
+        } catch (\Exception $e) {
+            Log::error("umumEpdsStart error: " . $e->getMessage());
+            return response()->json(['ack' => 'bad', 'message' => 'Gagal memulai skrining', 'data' => null], 200);
+        }
+    }
+
+    /**
+     * Start DASS untuk user umum (via shortlink)
+     */
+    public function umumDassStart(Request $request)
+    {
+        $request->validate([
+            'ibu_id' => 'required|exists:data_diri,id',
+            'mode' => 'required|in:umum,kehamilan'
+        ]);
+
+        try {
+            $data_diri = DataDiri::find($request->ibu_id);
+
+            if (!$data_diri) {
+                return response()->json(['ack' => 'bad', 'message' => 'Data diri tidak ditemukan', 'data' => null], 200);
+            }
+
+            $mode = $request->mode;
+            $riwayat = UsiaHamil::where('ibu_id', $data_diri->id)
+                ->whereNotNull('hpht')
+                ->whereNotNull('hpl')
+                ->latest('created_at')
+                ->first();
+
+            if ($mode === 'kehamilan') {
+                if (!$riwayat) {
+                    return response()->json([
+                        'ack' => 'need_hpht',
+                        'message' => 'HPHT belum diisi.',
+                        'data' => null
+                    ], 200);
+                }
+
+                $usiaMgg = hitungUsiaKehamilanMinggu($riwayat->hpht);
+                $trimester = tentukanTrimester($usiaMgg);
+                $keterangan  = hitungUsiaKehamilanString($riwayat->hpht);
+
+                $submittedCount = HasilDass::where('ibu_id', $data_diri->id)
+                    ->where('trimester', $trimester)
+                    ->where('status', 'submitted')
+                    ->select('batch_no')
+                    ->first();
+
+                $batchNo = $submittedCount ? $submittedCount->batch_no + 1 : 1;
+
+                $draft = HasilDass::where('ibu_id', $data_diri->id)
+                    ->where('trimester', $trimester)
+                    ->whereNotNull('usia_hamil_id')
+                    ->where('status', 'draft')
+                    ->orderByDesc('started_at')
+                    ->first();
+
+                if ($draft) {
+                    $answered = HasilDass::where('session_token', $draft->session_token)
+                        ->whereNotNull('dass_id')
+                        ->count();
+                    $total = SkriningDass::count();
+
+                    return response()->json([
+                        'ack' => 'ok',
+                        'message' => 'Lanjutkan skrining kehamilan yang tertunda.',
+                        'data' => [
+                            'session_token' => $draft->session_token,
+                            'type'          => 'kehamilan',
+                            'trimester'     => $trimester,
+                            'usia_hamil_id' => $riwayat->id,
+                            'hpht'          => $riwayat->hpht,
+                            'hpl'           => $riwayat->hpl,
+                            'usia_minggu'   => $usiaMgg,
+                            'keterangan'    => $keterangan,
+                            'answered'      => $answered,
+                            'total'         => $total,
+                            'batch_no'      => (int)($draft->batch_no ?? 1),
+                        ]
+                    ], 200);
+                }
+
+                $payload = DB::transaction(function () use ($data_diri, $riwayat, $trimester, $batchNo, $usiaMgg, $keterangan) {
+                    $now = now();
+                    $riwayatLock = UsiaHamil::lockForUpdate()->find($riwayat->id);
+
+                    $session = HasilDass::create([
+                        'ibu_id'            => $data_diri->id,
+                        'usia_hamil_id'     => $riwayatLock->id,
+                        'status'            => 'draft',
+                        'session_token'     => (string) Str::uuid(),
+                        'trimester'         => $trimester,
+                        'started_at'        => $now,
+                        'screening_date'    => $now,
+                        'batch_no'          => $batchNo,
+                        'mode'              => 'kehamilan',
+                        'periode'           => null,
+                    ]);
+
+                    if ($trimester === 'trimester_1' && !$riwayatLock->trimester_1) $riwayatLock->trimester_1 = $now;
+                    if ($trimester === 'trimester_2' && !$riwayatLock->trimester_2) $riwayatLock->trimester_2 = $now;
+                    if ($trimester === 'trimester_3' && !$riwayatLock->trimester_3) $riwayatLock->trimester_3 = $now;
+                    if ($trimester === 'pasca_hamil' && !$riwayatLock->pasca_hamil) $riwayatLock->pasca_hamil = $now;
+                    $riwayatLock->save();
+
+                    return [
+                        'ack' => 'ok',
+                        'message' => 'Session skrining kehamilan dimulai.',
+                        'data' => [
+                            'session_token' => $session->session_token,
+                            'type'          => 'kehamilan',
+                            'trimester'     => $trimester,
+                            'usia_hamil_id' => $riwayatLock->id,
+                            'hpht'          => $riwayatLock->hpht,
+                            'hpl'           => $riwayatLock->hpl,
+                            'usia_minggu'   => $usiaMgg,
+                            'keterangan'    => $keterangan,
+                            'answered'      => 0,
+                            'total'         => SkriningDass::count(),
+                            'batch_no'      => (int)$session->batch_no,
+                        ]
+                    ];
+                });
+
+                return response()->json($payload, 200);
+            } else {
+                // MODE UMUM
+                $periode = now()->format('Y-m');
+
+                $submittedCount = HasilDass::where('ibu_id', $data_diri->id)
+                    ->where('mode', 'umum')
+                    ->where('periode', $periode)
+                    ->where('status', 'submitted')
+                    ->select('batch_no')
+                    ->first();
+
+                $batchNo = $submittedCount ? $submittedCount->batch_no + 1 : 1;
+
+                $draft = HasilDass::where('ibu_id', $data_diri->id)
+                    ->where('mode', 'umum')
+                    ->where('periode', $periode)
+                    ->whereNull('usia_hamil_id')
+                    ->where('status', 'draft')
+                    ->orderByDesc('started_at')
+                    ->first();
+
+                if ($draft) {
+                    $answered = HasilDass::where('session_token', $draft->session_token)
+                        ->whereNotNull('dass_id')
+                        ->count();
+                    $total = SkriningDass::count();
+
+                    return response()->json([
+                        'ack' => 'ok',
+                        'message' => 'Lanjutkan skrining umum yang tertunda.',
+                        'data' => [
+                            'session_token' => $draft->session_token,
+                            'type'          => 'umum',
+                            'periode'       => $periode,
+                            'answered'      => $answered,
+                            'total'         => $total,
+                            'batch_no'      => (int)($draft->batch_no ?? 1),
+                        ]
+                    ], 200);
+                }
+
+                $payload = DB::transaction(function () use ($data_diri, $periode, $batchNo) {
+                    $now = now();
+
+                    $session = HasilDass::create([
+                        'ibu_id'            => $data_diri->id,
+                        'mode'              => 'umum',
+                        'periode'           => $periode,
+                        'status'            => 'draft',
+                        'session_token'     => (string) Str::uuid(),
+                        'started_at'        => $now,
+                        'screening_date'    => $now,
+                        'batch_no'          => $batchNo,
+                        'usia_hamil_id'     => null,
+                        'trimester'         => null,
+                    ]);
+
+                    return [
+                        'ack' => 'ok',
+                        'message' => 'Session skrining umum dimulai.',
+                        'data' => [
+                            'session_token' => $session->session_token,
+                            'type'          => 'umum',
+                            'periode'       => $periode,
+                            'answered'      => 0,
+                            'total'         => SkriningDass::count(),
+                            'batch_no'      => (int)$session->batch_no,
+                        ]
+                    ];
+                });
+
+                return response()->json($payload, 200);
+            }
+        } catch (\Exception $e) {
+            Log::error("umumDassStart error: " . $e->getMessage());
+            return response()->json(['ack' => 'bad', 'message' => 'Gagal memulai skrining', 'data' => null], 200);
+        }
     }
 }

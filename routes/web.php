@@ -93,6 +93,9 @@ Route::middleware(['auth', 'verified', 'is_admin', 'can:manage-rescreen-tokens']
         Route::post('/generate', 'generateLink')->name('skrining.generate');
         Route::get('/statistics', 'getStatistics')->name('skrining.statistics');
         Route::post('/link/deactivate/{id}', 'deactivateLink')->name('link.deactivate');
+
+        Route::get('/skrining/qrcode/{id}', 'showQRCode')->name('skrining.qrcode.show');
+        Route::delete('/skrining/delete/{id}', action: 'deleteLink')->name('skrining.delete');
     });
 });
 
