@@ -674,6 +674,7 @@
                 // Video file validation
                 function validateVideoFile(file) {
                     const maxSize = 700 * 1024 * 1024; // 700MB
+                    const minCompressionSize = 30 * 1024 * 1024; // 30MB
                     const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
 
                     if (!allowedTypes.includes(file.type)) {
@@ -690,8 +691,16 @@
                         };
                     }
 
+                    // Add info if video will be compressed or not
+                    const willCompress = file.size >= minCompressionSize;
+                    const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+                    
                     return {
-                        valid: true
+                        valid: true,
+                        willCompress: willCompress,
+                        info: willCompress 
+                            ? `Video akan dikompres (${sizeInMB} MB)` 
+                            : `Video tidak perlu dikompres (${sizeInMB} MB < 30 MB)`
                     };
                 }
 
@@ -768,44 +777,57 @@
 
                 // Create video item element with beautiful design
                 function createVideoItem(file, index) {
+                    const validation = validateVideoFile(file);
                     const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
                     const item = document.createElement('div');
                     item.className = 'video-item';
                     item.dataset.index = index;
+                    item.dataset.willCompress = validation.willCompress;
+                    
+                    const statusText = validation.willCompress ? 'Menunggu kompresi...' : 'Siap diupload';
+                    const statusClass = validation.willCompress ? 'status-pending' : 'status-completed';
+                    const statusIcon = validation.willCompress 
+                        ? `<svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>`
+                        : `<svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>`;
+                    
                     item.innerHTML = `
-            <div class="relative">
-                <img class="video-item-thumbnail" src="/assets/img/video-placeholder.svg" alt="Thumbnail">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-lg flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
-                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
-                </div>
-            </div>
-            <div class="video-item-info">
-                <div class="video-item-name">${file.name}</div>
-                <div class="flex items-center gap-2 mt-1">
-                    <span class="video-item-size">${sizeInMB} MB</span>
-                    <span class="video-item-separator">•</span>
-                    <span class="video-item-progress">Menunggu upload...</span>
-                </div>
-                <div class="video-item-progress-bar">
-                    <div class="video-item-progress-fill" style="width: 0%"></div>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="video-item-status status-pending">
-                    <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Menunggu
-                </span>
-                <button type="button" class="btn-remove-video" data-index="${index}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-        `;
+                        <div class="relative">
+                            <img class="video-item-thumbnail" src="/assets/img/video-placeholder.svg" alt="Thumbnail">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-lg flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
+                                <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="video-item-info">
+                            <div class="video-item-name">${file.name}</div>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="video-item-size">${sizeInMB} MB</span>
+                                <span class="video-item-separator">•</span>
+                                <span class="video-item-progress">${statusText}</span>
+                            </div>
+                            ${validation.willCompress ? `
+                            <div class="video-item-progress-bar">
+                                <div class="video-item-progress-fill" style="width: 0%"></div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="video-item-status ${statusClass}">
+                                ${statusIcon}
+                                ${validation.willCompress ? 'Akan Dikompres' : 'Siap'}
+                            </span>
+                            <button type="button" class="btn-remove-video" data-index="${index}">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
                     return item;
                 }
 
@@ -1008,6 +1030,27 @@
 
                 // Poll video processing status with improved error handling
                 function startPolling(mediaId, itemElement) {
+                    const willCompress = itemElement.dataset.willCompress === 'true';
+                    
+                    if (!willCompress) {
+                        // Video not compressed, just wait for upload completion
+                        const status = itemElement.querySelector('.video-item-status');
+                        const progressText = itemElement.querySelector('.video-item-progress');
+                        
+                        status.className = 'video-item-status status-completed';
+                        status.innerHTML = `
+                            <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Selesai
+                        `;
+                        progressText.textContent = 'Upload selesai (tidak perlu kompresi)';
+                        
+                        checkAllCompleted();
+                        return;
+                    }
+                    
+                    // Continue with normal polling for compressed videos
                     const status = itemElement.querySelector('.video-item-status');
                     const progressText = itemElement.querySelector('.video-item-progress');
                     const progressFill = itemElement.querySelector('.video-item-progress-fill');
@@ -1015,16 +1058,16 @@
 
                     status.className = 'video-item-status status-processing';
                     status.innerHTML = `
-            <svg class="w-3.5 h-3.5 inline-block mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-            </svg>
-            Memproses
-        `;
+                        <svg class="w-3.5 h-3.5 inline-block mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Memproses
+                    `;
                     progressText.textContent = 'Mengkompresi video...';
 
                     let pollAttempts = 0;
-                    const maxPollAttempts = 300; // 10 minutes max (300 * 2 seconds)
+                    const maxPollAttempts = 300;
 
                     pollingIntervals[mediaId] = setInterval(async () => {
                         pollAttempts++;
@@ -1039,14 +1082,10 @@
 
                         try {
                             const response = await fetch(`/edukasi/video-status/${mediaId}`, {
-                                headers: {
-                                    'X-Requested-With': 'XMLHttpRequest'
-                                }
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' }
                             });
 
-                            if (!response.ok) {
-                                throw new Error(`HTTP ${response.status}`);
-                            }
+                            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                             const data = await response.json();
 
@@ -1054,15 +1093,14 @@
                                 clearInterval(pollingIntervals[mediaId]);
                                 status.className = 'video-item-status status-completed';
                                 status.innerHTML = `
-                        <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        Selesai
-                    `;
-                                progressText.textContent = 'Kompresi selesai!';
-                                progressFill.style.width = '100%';
+                                    <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Selesai
+                                `;
+                                progressText.textContent = willCompress ? 'Kompresi selesai!' : 'Upload selesai!';
+                                if (progressFill) progressFill.style.width = '100%';
 
-                                // Update thumbnail if available
                                 if (data.thumbnail_url) {
                                     thumbnail.src = data.thumbnail_url;
                                 }
@@ -1072,30 +1110,29 @@
                                 clearInterval(pollingIntervals[mediaId]);
                                 status.className = 'video-item-status status-failed';
                                 status.innerHTML = `
-                        <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        Gagal
-                    `;
+                                    <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Gagal
+                                `;
                                 progressText.textContent = data.error || 'Kompresi gagal';
-                                progressFill.style.width = '0%';
+                                if (progressFill) progressFill.style.width = '0%';
 
-                                checkAllCompleted(); // Still check if others are done
+                                checkAllCompleted();
                             } else if (data.status === 'processing') {
-                                const progress = Math.min(data.progress || 0, 99); // Cap at 99% until completed
+                                const progress = Math.min(data.progress || 0, 99);
                                 progressText.textContent = `${progress}%`;
-                                progressFill.style.width = progress + '%';
+                                if (progressFill) progressFill.style.width = progress + '%';
 
-                                // Update thumbnail when available
                                 if (data.thumbnail_url && thumbnail.src.includes('placeholder')) {
                                     thumbnail.src = data.thumbnail_url;
                                 }
                             }
                         } catch (err) {
                             console.error('Polling error:', err);
-                            pollAttempts += 5; // Penalize failed attempts
+                            pollAttempts += 5;
                         }
-                    }, 2000); // Poll every 2 seconds
+                    }, 2000);
                 }
 
                 // Check if all videos completed processing

@@ -34,20 +34,73 @@ class CompressVideoJob implements ShouldQueue
     public function handle(): void
     {
         $media = EducationMedia::find($this->mediaId);
-        
+
         if (!$media) {
             Log::error("Media not found: {$this->mediaId}");
             return;
         }
 
         try {
-            $media->update(['processing_status' => 'processing', 'processing_progress' => 0]);
-
             $fullPath = Storage::disk('public')->path($this->originalPath);
-            
+
             if (!file_exists($fullPath)) {
                 throw new \Exception("File not found: {$fullPath}");
             }
+
+            // Check file size - skip compression if < 30MB
+            $fileSize = filesize($fullPath);
+            $minCompressionSize = 30 * 1024 * 1024; // 30MB
+
+            if ($fileSize < $minCompressionSize) {
+                Log::info("Video too small for compression, generating thumbnail only", [
+                    'media_id' => $this->mediaId,
+                    'size' => $this->formatBytes($fileSize)
+                ]);
+
+                // Just generate thumbnail and mark as completed
+                $media->update(['processing_status' => 'processing', 'processing_progress' => 50]);
+
+                $isProduction = config('app.env') === 'production';
+
+                $ffmpegBinary = $isProduction
+                    ? config('services.ffmpeg.binaries_prod', env('FFMPEG_BINARIES_PROD', '/usr/bin/ffmpeg'))
+                    : config('services.ffmpeg.binaries_dev', env('FFMPEG_BINARIES_DEV', 'C:/ffmpeg/bin/ffmpeg.exe'));
+
+                $ffprobeBinary = $isProduction
+                    ? config('services.ffmpeg.probe_prod', env('FFPROBE_BINARIES_PROD', '/usr/bin/ffprobe'))
+                    : config('services.ffmpeg.probe_dev', env('FFPROBE_BINARIES_DEV', 'C:/ffmpeg/bin/ffprobe.exe'));
+
+                if (file_exists($ffmpegBinary) && file_exists($ffprobeBinary)) {
+                    $ffmpeg = FFMpeg::create([
+                        'ffmpeg.binaries'  => $ffmpegBinary,
+                        'ffprobe.binaries' => $ffprobeBinary,
+                        'timeout'          => 300,
+                    ]);
+
+                    $video = $ffmpeg->open($fullPath);
+                    $thumbnailPath = $this->generateThumbnail($video, $fullPath);
+
+                    if ($thumbnailPath) {
+                        $media->update(['thumbnail_path' => $thumbnailPath]);
+                    }
+                }
+
+                $media->update([
+                    'processing_status' => 'completed',
+                    'processing_progress' => 100,
+                    'processing_error' => null
+                ]);
+
+                Log::info("Small video processed successfully (no compression)", [
+                    'media_id' => $this->mediaId,
+                    'size' => $this->formatBytes($fileSize)
+                ]);
+
+                return;
+            }
+
+            // Continue with compression for files >= 30MB
+            $media->update(['processing_status' => 'processing', 'processing_progress' => 0]);
 
             $tempPath = Storage::disk('public')->path('temp/' . basename($this->originalPath));
             $tempDir = dirname($tempPath);
@@ -57,20 +110,21 @@ class CompressVideoJob implements ShouldQueue
 
             // Detect environment
             $isProduction = config('app.env') === 'production';
-            
-            $ffmpegBinary = $isProduction 
+
+            $ffmpegBinary = $isProduction
                 ? config('services.ffmpeg.binaries_prod', env('FFMPEG_BINARIES_PROD', '/usr/bin/ffmpeg'))
                 : config('services.ffmpeg.binaries_dev', env('FFMPEG_BINARIES_DEV', 'C:/ffmpeg/bin/ffmpeg.exe'));
-            
+
             $ffprobeBinary = $isProduction
                 ? config('services.ffmpeg.probe_prod', env('FFPROBE_BINARIES_PROD', '/usr/bin/ffprobe'))
                 : config('services.ffmpeg.probe_dev', env('FFPROBE_BINARIES_DEV', 'C:/ffmpeg/bin/ffprobe.exe'));
 
-            Log::info("Using FFmpeg", [
+            Log::info("Using FFmpeg for compression", [
                 'environment' => config('app.env'),
                 'ffmpeg' => $ffmpegBinary,
                 'ffprobe' => $ffprobeBinary,
-                'file' => $fullPath
+                'file' => $fullPath,
+                'size' => $this->formatBytes($fileSize)
             ]);
 
             if (!file_exists($ffmpegBinary)) {
@@ -89,11 +143,11 @@ class CompressVideoJob implements ShouldQueue
             ]);
 
             $video = $ffmpeg->open($fullPath);
-            
+
             // Update progress: 10% - Generate thumbnail
             $media->update(['processing_progress' => 10]);
             $thumbnailPath = $this->generateThumbnail($video, $fullPath);
-            
+
             if ($thumbnailPath) {
                 $media->update(['thumbnail_path' => $thumbnailPath]);
                 Log::info("Thumbnail generated: {$thumbnailPath}");
@@ -102,19 +156,22 @@ class CompressVideoJob implements ShouldQueue
             // Update progress: 20%
             $media->update(['processing_progress' => 20]);
 
-            $originalSize = filesize($fullPath);
-            Log::info("Original video size: " . $this->formatBytes($originalSize));
+            Log::info("Original video size: " . $this->formatBytes($fileSize));
 
             // Setup compression format
             $format = new X264('aac', 'libx264');
             $format->setKiloBitrate(1000)
-                   ->setAudioKiloBitrate(128)
-                   ->setAdditionalParameters([
-                       '-preset', 'medium',
-                       '-crf', '23',
-                       '-movflags', '+faststart',
-                       '-pix_fmt', 'yuv420p'
-                   ]);
+                ->setAudioKiloBitrate(128)
+                ->setAdditionalParameters([
+                    '-preset',
+                    'medium',
+                    '-crf',
+                    '23',
+                    '-movflags',
+                    '+faststart',
+                    '-pix_fmt',
+                    'yuv420p'
+                ]);
 
             // Update progress: 40%
             $media->update(['processing_progress' => 40]);
@@ -124,21 +181,21 @@ class CompressVideoJob implements ShouldQueue
                 ->streams($fullPath)
                 ->videos()
                 ->first();
-                
+
             if ($videoStream) {
                 $width = $videoStream->get('width');
                 $height = $videoStream->get('height');
-                
+
                 Log::info("Original video dimensions: {$width}x{$height}");
-                
+
                 if ($height > 1080) {
                     $newHeight = 1080;
                     $newWidth = intval(($width / $height) * $newHeight);
-                    
+
                     if ($newWidth % 2 !== 0) {
                         $newWidth++;
                     }
-                    
+
                     Log::info("Resizing to: {$newWidth}x{$newHeight}");
                     $video->filters()->resample(new Dimension($newWidth, $newHeight));
                 }
@@ -166,10 +223,10 @@ class CompressVideoJob implements ShouldQueue
             }
 
             $compressedSize = filesize($tempPath);
-            $reduction = round((1 - $compressedSize / $originalSize) * 100, 2);
-            
+            $reduction = round((1 - $compressedSize / $fileSize) * 100, 2);
+
             Log::info("Video compression completed", [
-                'original_size' => $this->formatBytes($originalSize),
+                'original_size' => $this->formatBytes($fileSize),
                 'compressed_size' => $this->formatBytes($compressedSize),
                 'reduction' => $reduction . '%'
             ]);
@@ -178,7 +235,7 @@ class CompressVideoJob implements ShouldQueue
             if (file_exists($fullPath)) {
                 unlink($fullPath);
             }
-            
+
             if (!rename($tempPath, $fullPath)) {
                 throw new \Exception("Failed to replace original file");
             }
@@ -194,7 +251,6 @@ class CompressVideoJob implements ShouldQueue
                 'media_id' => $this->mediaId,
                 'thumbnail' => $thumbnailPath
             ]);
-
         } catch (\Exception $e) {
             Log::error("Video compression failed", [
                 'media_id' => $this->mediaId,
@@ -221,7 +277,7 @@ class CompressVideoJob implements ShouldQueue
             $fileName = pathinfo($fullPath, PATHINFO_FILENAME);
             $thumbnailName = 'thumbnails/' . $fileName . '_thumb.jpg';
             $thumbnailFullPath = Storage::disk('public')->path($thumbnailName);
-            
+
             // Ensure thumbnails directory exists
             $thumbnailDir = dirname($thumbnailFullPath);
             if (!is_dir($thumbnailDir)) {
@@ -242,7 +298,7 @@ class CompressVideoJob implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         $media = EducationMedia::find($this->mediaId);
-        
+
         if ($media) {
             $media->update([
                 'processing_status' => 'failed',
